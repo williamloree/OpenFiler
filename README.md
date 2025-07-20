@@ -1,4 +1,4 @@
-# 📁 FilerService
+# 📁 OpenFiler
 
 Service Node.js Express sécurisé pour la gestion de fichiers (upload & suppression) avec authentification par token.
 
