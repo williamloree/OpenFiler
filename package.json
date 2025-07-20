@@ -1,0 +1,33 @@
+{
+  "name": "service-file",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npx nodemon",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "build:docker": "docker-compose build",
+    "start:docker": "docker-compose up -d",
+    "logs:docker": "docker-compose logs -f",
+    "stop:docker": "docker-compose down",
+    "generate-token": "ts-node scripts/generate-token.ts",
+    "setup": "npm run generate-token && echo 'Ajoutez le token généré dans votre .env puis lancez: npm run dev'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.5.4",
+    "typescript": "^5.6.2"
+  }
+}

@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Filer Service - Gestionnaire de fichiers</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #4caf50, #45a049);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+
+      .header h1 {
+        margin-bottom: 10px;
+        font-size: 2em;
+      }
+
+      .header p {
+        opacity: 0.9;
+        font-size: 1.1em;
+      }
+
+      .content {
+        padding: 40px;
+      }
+
+      .form-section {
+        margin-bottom: 30px;
+        padding: 25px;
+        border: 2px dashed #e0e0e0;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+      }
+
+      .form-section:hover {
+        border-color: #4caf50;
+        background-color: #f9f9f9;
+      }
+
+      .form-section h3 {
+        color: #333;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .form-section h3::before {
+        content: "📁";
+        font-size: 1.2em;
+      }
+
+      .form-section:nth-child(1) h3::before {
+        content: "🖼️";
+      }
+
+      .form-section:nth-child(2) h3::before {
+        content: "🎬";
+      }
+
+      .form-section:nth-child(3) h3::before {
+        content: "📄";
+      }
+
+      .file-input-container {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+      }
+
+      .file-input {
+        width: 100%;
+        padding: 15px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .file-input:hover {
+        border-color: #4caf50;
+      }
+
+      .file-info {
+        margin-top: 10px;
+        font-size: 0.9em;
+        color: #666;
+      }
+
+      .upload-btn {
+        width: 100%;
+        padding: 15px 30px;
+        background: linear-gradient(135deg, #4caf50, #45a049);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1em;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 20px;
+      }
+
+      .upload-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(76, 175, 80, 0.3);
+      }
+
+      .upload-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .result {
+        margin-top: 20px;
+        padding: 20px;
+        border-radius: 8px;
+        display: none;
+      }
+
+      .result.success {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+      }
+
+      .result.error {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+      }
+
+      .file-list {
+        margin-top: 15px;
+      }
+
+      .file-item {
+        background: white;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .file-item-info {
+        flex: 1;
+      }
+
+      .file-item-name {
+        font-weight: bold;
+        color: #333;
+      }
+
+      .file-item-details {
+        font-size: 0.9em;
+        color: #666;
+        margin-top: 5px;
+      }
+
+      .file-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .btn {
+        padding: 8px 15px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-decoration: none;
+        font-size: 0.9em;
+        transition: all 0.3s ease;
+      }
+
+      .btn-preview {
+        background: #17a2b8;
+        color: white;
+      }
+
+      .btn-download {
+        background: #28a745;
+        color: white;
+      }
+
+      .btn-delete {
+        background: #dc3545;
+        color: white;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+        opacity: 0.9;
+      }
+
+      .loading {
+        display: none;
+        text-align: center;
+        padding: 20px;
+      }
+
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #4caf50;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 10px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .auth-info {
+        background: #e7f3ff;
+        border: 1px solid #b3d9ff;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      .auth-info .token {
+        font-family: monospace;
+        background: #f0f0f0;
+        padding: 5px 10px;
+        border-radius: 4px;
+        margin: 0 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🚀 Filer Service</h1>
+        <p>Gestionnaire de fichiers sécurisé</p>
+      </div>
+
+      <div class="content">
+        <div class="auth-info">
+          <p>🔐 <strong>Accès sécurisé activé</strong></p>
+          <p>
+            Token actuel:
+            <span class="token" id="currentToken">Non détecté</span>
+          </p>
+        </div>
+
+        <form id="uploadForm" enctype="multipart/form-data">
+          <div class="form-section">
+            <h3>Images</h3>
+            <input
+              type="file"
+              name="image"
+              multiple
+              accept="image/jpeg,image/jpg,image/png,image/svg+xml,image/webp,image/bmp"
+              class="file-input"
+            />
+            <div class="file-info">
+              Formats acceptés: JPG, PNG, SVG, WebP, BMP • Maximum 6 fichiers •
+              64MB max par fichier
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>Vidéos</h3>
+            <input
+              type="file"
+              name="video"
+              multiple
+              accept="video/mp4,video/avi,video/mov,video/wmv,video/flv,video/webm,video/mkv"
+              class="file-input"
+            />
+            <div class="file-info">
+              Formats acceptés: MP4, AVI, MOV, WMV, FLV, WebM, MKV • Maximum 2
+              fichiers • 64MB max par fichier
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>Documents</h3>
+            <input
+              type="file"
+              name="document"
+              multiple
+              accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              class="file-input"
+            />
+            <div class="file-info">
+              Formats acceptés: PDF, DOCX • Maximum 3 fichiers • 64MB max par
+              fichier
+            </div>
+          </div>
+
+          <button type="submit" class="upload-btn" id="uploadBtn">
+            📤 Uploader les fichiers
+          </button>
+        </form>
+
+        <div class="loading" id="loading">
+          <div class="spinner"></div>
+          <p>Upload en cours...</p>
+        </div>
+
+        <div class="result" id="result"></div>
+      </div>
+    </div>
+
+    <script>
+      // Récupérer le token depuis l'URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get("token");
+
+      // Afficher le token actuel
+      document.getElementById("currentToken").textContent =
+        token || "Aucun token dans l'URL";
+
+      // Fonction pour faire des requêtes avec le token
+      async function makeAuthenticatedRequest(url, options = {}) {
+        const headers = {
+          ...options.headers,
+        };
+
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
+        return fetch(url, {
+          ...options,
+          headers,
+        });
+      }
+
+      // Gestion du formulaire d'upload
+      document
+        .getElementById("uploadForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const formData = new FormData(this);
+          const loadingEl = document.getElementById("loading");
+          const resultEl = document.getElementById("result");
+          const uploadBtn = document.getElementById("uploadBtn");
+
+          // Vérifier si des fichiers sont sélectionnés
+          const hasFiles = Array.from(formData.entries()).some(
+            ([key, value]) => value instanceof File && value.size > 0
+          );
+
+          if (!hasFiles) {
+            showResult("Veuillez sélectionner au moins un fichier.", "error");
+            return;
+          }
+
+          // Afficher le loading
+          loadingEl.style.display = "block";
+          resultEl.style.display = "none";
+          uploadBtn.disabled = true;
+
+          try {
+            const response = await makeAuthenticatedRequest("/api/upload", {
+              method: "POST",
+              body: formData,
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+              showResult(`✅ ${data.message}`, "success");
+              displayUploadedFiles(data.files);
+              this.reset(); // Reset du formulaire
+            } else {
+              showResult(`❌ ${data.message}`, "error");
+            }
+          } catch (error) {
+            console.error("Erreur upload:", error);
+            showResult("❌ Erreur de connexion au serveur.", "error");
+          } finally {
+            loadingEl.style.display = "none";
+            uploadBtn.disabled = false;
+          }
+        });
+
+      function showResult(message, type) {
+        const resultEl = document.getElementById("result");
+        resultEl.textContent = message;
+        resultEl.className = `result ${type}`;
+        resultEl.style.display = "block";
+      }
+
+      function displayUploadedFiles(files) {
+        if (!files || files.length === 0) return;
+
+        const resultEl = document.getElementById("result");
+        const fileListHtml = files
+          .map(
+            (file) => `
+                <div class="file-item">
+                    <div class="file-item-info">
+                        <div class="file-item-name">${file.defaultName}</div>
+                        <div class="file-item-details">
+                            ${formatFileSize(file.size)} • ${file.type} • ${
+              file.fieldname
+            }
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <a href="${file.url}${token ? "?token=" + token : ""}" 
+                           target="_blank" 
+                           class="btn btn-preview">👁️ Aperçu</a>
+                        <button onclick="deleteFile('${file.name}', '${
+              file.type
+            }')" 
+                                class="btn btn-delete">🗑️ Supprimer</button>
+                    </div>
+                </div>
+            `
+          )
+          .join("");
+
+        resultEl.innerHTML += `<div class="file-list">${fileListHtml}</div>`;
+      }
+
+      async function deleteFile(filename, mimetype) {
+        if (!confirm(`Êtes-vous sûr de vouloir supprimer "${filename}" ?`)) {
+          return;
+        }
+
+        try {
+          const response = await makeAuthenticatedRequest("/api/files", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name: filename,
+              type: mimetype,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            showResult(`✅ ${data.message}`, "success");
+            // Recharger la page après un court délai
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+          } else {
+            showResult(`❌ ${data.message}`, "error");
+          }
+        } catch (error) {
+          console.error("Erreur suppression:", error);
+          showResult("❌ Erreur lors de la suppression.", "error");
+        }
+      }
+
+      function formatFileSize(bytes) {
+        if (bytes === 0) return "0 B";
+        const k = 1024;
+        const sizes = ["B", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+      }
+
+      // Vérifier l'authentification au chargement
+      window.addEventListener("load", async function () {
+        if (!token) {
+          showResult(
+            "⚠️ Aucun token d'accès détecté dans l'URL. Ajoutez ?token=YOUR_TOKEN",
+            "error"
+          );
+          return;
+        }
+
+        try {
+          const response = await makeAuthenticatedRequest("/api/health");
+          if (response.ok) {
+            console.log("✅ Authentification réussie");
+          } else {
+            showResult("❌ Token d'accès invalide", "error");
+          }
+        } catch (error) {
+          console.error("Erreur de vérification:", error);
+        }
+      });
+    </script>
+  </body>
+</html>
