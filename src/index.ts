@@ -6,12 +6,14 @@ import * as dotenv from "dotenv";
 
 import { router } from "./routes";
 import { simpleAuth } from "./middleware/auth.middleware";
+import { requestLogger } from "./middleware/request-logger.middleware";
+import { logger } from "./config/logger";
 
 dotenv.config();
 
 const app = express();
 
-app.use(cors({ 
+app.use(cors({
   origin: process.env.APP_ALLOWED_ORIGIN || "*",
   methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -20,51 +22,33 @@ app.use(cors({
 app.use(express.json({ limit: '70mb' }));
 app.use(express.urlencoded({ extended: true, limit: '70mb' }));
 
+app.use(requestLogger);
+
 const createUploadDirectories = () => {
   try {
     const uploadDir = path.join(process.cwd(), 'upload');
     mkdirSync(uploadDir, { recursive: true });
     mkdirSync(path.join(uploadDir, 'image'), { recursive: true });
     mkdirSync(path.join(uploadDir, 'document'), { recursive: true });
-    console.log('📁 Dossiers d\'upload créés avec succès');
+    mkdirSync(path.join(uploadDir, 'video'), { recursive: true });
+    logger.info("Upload directories created successfully");
   } catch (error) {
-    console.error('❌ Erreur lors de la création des dossiers d\'upload:', error);
+    logger.error({ err: error }, "Failed to create upload directories");
   }
 };
 
 createUploadDirectories();
 
-if (process.env.NODE_ENV !== 'production') {
-  app.use((req, _res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-    next();
-  });
-}
-
 app.get("/", simpleAuth, (_req, res) => {
-  res.sendFile(path.join(process.cwd(), "public", "filer-service-form.html"));
+  res.sendFile(path.join(process.cwd(), "public", "browser.html"));
 });
 
 app.use("/api", router);
 
-// Si on veut forcer le telechargement.
-// app.use("/preview", express.static(path.join(process.cwd(), "upload"), {
-//   maxAge: '1d', // Cache pour 1 jour
-//   etag: true,
-//   setHeaders: (res, filePath) => {
-//     if (filePath.includes('/image/')) {
-//       res.setHeader('Content-Type', 'image/*');
-//     } else if (filePath.includes('/document/')) {
-//       res.setHeader('Content-Type', 'application/octet-stream');
-//       res.setHeader('Content-Disposition', 'attachment');
-//     }
-//   }
-// }));
-
 app.use("/preview", express.static("upload"));
 
 app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Erreur globale:', err);
+  logger.error({ err, stack: err.stack }, "Unhandled error");
 
   if (res.headersSent) {
     return next(err);
@@ -86,10 +70,9 @@ const PORT = process.env.APP_PORT || 3200;
 const HOST = process.env.APP_HOST || '0.0.0.0';
 
 app.listen(Number(PORT), HOST, () => {
-  console.log(`🚀 Server ready at: http://${HOST}:${PORT}`);
-  console.log(`🔐 Interface protégée: http://${HOST}:${PORT}/ (token requis)`);
-  console.log(`📋 API Health Check: http://${HOST}:${PORT}/api/health`);
-  console.log(`📤 Upload endpoint: http://${HOST}:${PORT}/api/upload`);
-  console.log(`🖼️  Preview files: http://${HOST}:${PORT}/preview/`);
-  console.log(`🔑 Token d'accès: admin123`);
+  logger.info({ host: HOST, port: PORT }, "Server started");
+  logger.info({ url: `http://${HOST}:${PORT}/` }, "File browser");
+  logger.info({ url: `http://${HOST}:${PORT}/api/health` }, "Health check");
+  logger.info({ url: `http://${HOST}:${PORT}/api/upload` }, "Upload endpoint");
+  logger.info({ url: `http://${HOST}:${PORT}/preview/` }, "Preview files");
 });

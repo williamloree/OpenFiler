@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { logger } from "../config/logger";
 
 const HARD_CODED_TOKEN = "admin123";
 
@@ -6,6 +7,7 @@ export const simpleAuth = (req: Request, res: Response, next: NextFunction): voi
   const token = req.query.token as string;
 
   if (!token) {
+    logger.warn({ ip: req.ip, url: req.originalUrl, event: "auth_no_token" }, "Access attempt without token");
     res.status(401).send(`
       <!DOCTYPE html>
       <html lang="fr">
@@ -76,6 +78,7 @@ export const simpleAuth = (req: Request, res: Response, next: NextFunction): voi
   }
 
   if (token !== HARD_CODED_TOKEN) {
+    logger.warn({ ip: req.ip, url: req.originalUrl, event: "auth_invalid_token" }, "Access attempt with invalid token");
     res.status(403).send(`
       <!DOCTYPE html>
       <html lang="fr">

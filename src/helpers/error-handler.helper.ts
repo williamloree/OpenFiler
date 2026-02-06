@@ -11,7 +11,9 @@ export const ErrorTypes = {
   },
 };
 
-export default (res, error) => {
-  console.log("Throwing custom error");
+import { logger } from "../config/logger";
+
+export default (res: any, error: any) => {
+  logger.warn({ error, event: "custom_error" }, "Custom error thrown");
   res.status(400).json({ message: error });
 };

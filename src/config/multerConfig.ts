@@ -6,6 +6,7 @@ import { NextFunction, Request, Response } from "express";
 
 import { ErrorTypes } from "../helpers/error-handler.helper";
 import { ArrayFields, ObjectAuthorizedMimeTypes } from "../@types/multer";
+import { logger } from "./logger";
 
 const authorizedMimeTypes: ObjectAuthorizedMimeTypes = {
   image: [
@@ -91,7 +92,7 @@ export const fileUploadMiddleware = (
 
   upload.fields(fields)(req, res, (err: any) => {
     if (err) {
-      console.error("Multer error:", err);
+      logger.warn({ err, code: err.code, event: "upload_error" }, "Multer upload error");
 
       if (err.message.startsWith("TYPE_NOT_ALLOWED")) {
         const [, fieldname, mimetype] = err.message.split(":");

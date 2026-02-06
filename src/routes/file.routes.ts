@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { fileCreate, deleteFile, getFileInfo, listFiles } from "../controller";
+import { fileCreate, deleteFile, getFileInfo, listFiles, getStats, downloadFile } from "../controller";
 
 export const router = Router();
 
@@ -7,10 +7,12 @@ router.post("/upload", fileCreate);
 router.delete("/files", deleteFile);
 router.get("/files", listFiles);
 router.get("/files/:folder/:name", getFileInfo);
+router.get("/stats", getStats);
+router.get("/download/:folder/:name", downloadFile);
 
 router.get("/health", (_req, res) => {
-  res.status(200).json({ 
-    status: "OK", 
+  res.status(200).json({
+    status: "OK",
     timestamp: new Date().toISOString(),
     service: "filer-service",
     version: "1.0.0"
