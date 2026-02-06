@@ -1,12 +1,12 @@
-# 📁 OpenFiler
+# OpenFiler
 
-Service Node.js Express sécurisé pour la gestion de fichiers (upload & suppression) avec authentification par token.
+Service Node.js/Express de gestion de fichiers avec interface de navigation style MinIO, logging structure et authentification par token.
 
-## ⚡ Démarrage rapide
+## Demarrage rapide
 
 ### 1. Configuration
 
-Créez un fichier `.env` dans le dossier racine :
+Creez un fichier `.env` :
 
 ```env
 NODE_ENV=production
@@ -15,225 +15,251 @@ APP_HOST=0.0.0.0
 APP_ALLOWED_ORIGIN=*
 ```
 
-### 2. Lancement avec Docker
+### 2. Installation
 
 ```bash
+npm install
+```
+
+### 3. Lancement
+
+```bash
+# Developpement (hot-reload)
+npm run dev
+
+# Production
+npm run build && npm start
+
+# Docker
 docker-compose up --build
 ```
 
-### 3. Accès à l'interface web sécurisée
+### 4. Acces
 
-1. Allez sur `http://localhost:3200/`
-2. Entrez le token d'accès : `admin123`
-3. Ou directement : `http://localhost:3200/?token=admin123`
+Ouvrez `http://localhost:3200/?token=admin123`
 
-## 🔐 Authentification
+## Interface File Browser
 
-L'interface web est protégée par un token d'accès simple :
+L'interface principale (`/`) est un navigateur de fichiers inspire de MinIO Console :
 
-- **Token par défaut** : `admin123`
-- **Pour modifier** : Changez `HARD_CODED_TOKEN` dans `src/middleware/auth.middleware.ts`
+- **Sidebar** : navigation par dossier (images, videos, documents) avec compteurs et stats de stockage
+- **Tableau triable** : nom, type, taille, date de modification
+- **Recherche** en temps reel
+- **Preview inline** : images, videos HTML5, PDFs en iframe
+- **Upload** : drag & drop ou selection de fichiers
+- **Suppression** : unitaire ou par lot (selection multiple)
+- **Telechargement** force via bouton d'action
 
-## 📋 API Endpoints
+## Authentification
 
-### 📤 Upload de fichiers
+L'interface est protegee par un token d'acces :
 
-```bash
-POST http://localhost:3200/api/upload
+- **Token par defaut** : `admin123`
+- **Modifier** : changer `HARD_CODED_TOKEN` dans `src/middleware/auth.middleware.ts`
+- Acces via query param : `/?token=VOTRE_TOKEN`
+
+## API Endpoints
+
+### Upload de fichiers
+
+```
+POST /api/upload
 Content-Type: multipart/form-data
 ```
 
-**Champs acceptés :**
-
-- `image` : Images (JPG, PNG, SVG, WebP, BMP) - Max 6 fichiers
-- `video` : Vidéos (MP4, AVI, MOV, WMV, FLV, WebM, MKV) - Max 2 fichiers
-- `document` : Documents (PDF, DOCX) - Max 3 fichiers
-- **Limite** : 64MB par fichier
-
-**Exemple JavaScript :**
+Champs : `image` (max 6), `video` (max 2), `document` (max 3). Limite : 64 MB/fichier.
 
 ```javascript
 const formData = new FormData();
-formData.append('image', fileInput.files[0]);
-formData.append('video', videoInput.files[0]);
-formData.append('document', docInput.files[0]);
+formData.append('image', file);
 
-const response = await fetch('http://localhost:3200/api/upload', {
-    method: 'POST',
-    body: formData
+const response = await fetch('/api/upload', {
+  method: 'POST',
+  body: formData
 });
 ```
 
-### 🗑️ Suppression de fichiers
+### Suppression
 
-```bash
-DELETE http://localhost:3200/api/files
+```
+DELETE /api/files
 Content-Type: application/json
+
+{ "name": "1642234567890_fichier.jpg", "type": "image/jpeg" }
 ```
 
-**Body JSON :**
+### Lister les fichiers
+
+```
+GET /api/files
+GET /api/files?folder=image
+```
+
+### Info fichier
+
+```
+GET /api/files/:folder/:name
+```
+
+### Statistiques de stockage
+
+```
+GET /api/stats
+```
+
+Reponse :
 
 ```json
 {
-    "name": "1642234567890_mon-fichier.jpg",
-    "type": "image/jpeg"
+  "totalFiles": 42,
+  "totalSize": 125829120,
+  "folders": {
+    "image": { "count": 30, "size": 89128960 },
+    "video": { "count": 5, "size": 31457280 },
+    "document": { "count": 7, "size": 5242880 }
+  }
 }
 ```
 
-### 📋 Lister les fichiers
+### Telechargement force
 
-```bash
-GET http://localhost:3200/api/files
-GET http://localhost:3200/api/files?folder=image
+```
+GET /api/download/:folder/:name
 ```
 
-### 🔍 Informations d'un fichier
+### Health Check
 
-```bash
-GET http://localhost:3200/api/files/:folder/:name
+```
+GET /api/health
 ```
 
-### ❤️ Health Check
+### Types autorises
 
-```bash
-GET http://localhost:3200/api/health
+```
+GET /api/config/allowed-types
 ```
 
-### ⚙️ Types autorisés
+## Logging structure
 
-```bash
-GET http://localhost:3200/api/config/allowed-types
+Le projet utilise [Pino](https://github.com/pinojs/pino) pour le logging structure :
+
+- **Production** : JSON (exploitable par ELK, Datadog, etc.)
+- **Developpement** : pretty-print colore
+
+Chaque requete est tracee avec un `requestId` unique (header `X-Request-Id`).
+
+Exemple de log en production :
+
+```json
+{
+  "level": 30,
+  "time": "2026-02-06T14:38:36.392Z",
+  "service": "openfiler",
+  "version": "1.0.0",
+  "requestId": "65b39558-36d1-42be-86e5-4723bf60f284",
+  "method": "GET",
+  "url": "/api/health",
+  "statusCode": 200,
+  "durationMs": 5,
+  "event": "request_end"
+}
 ```
 
-## 📂 Structure des fichiers
+Evenements traces : `request_start`, `request_end`, `files_uploaded`, `file_deleted`, `file_downloaded`, `upload_error`, `auth_no_token`, `auth_invalid_token`.
 
-```bash
-/
-├── src/                 # Code source TypeScript
-├── public/             # Interface web sécurisée
-│   └── filer-service-form.html
-├── upload/             # Fichiers uploadés
-│   ├── image/         # Images
-│   ├── video/         # Vidéos
-│   └── document/      # Documents PDF/DOCX
-└── dist/              # Code compilé
+## Preview de fichiers
+
+Les fichiers uploades sont accessibles directement :
+
+```
+http://localhost:3200/preview/image/fichier.jpg
+http://localhost:3200/preview/video/video.mp4
+http://localhost:3200/preview/document/document.pdf
 ```
 
-## 🖼️ Prévisualisation des fichiers
+## Structure du projet
 
-Les fichiers uploadés sont accessibles via :
-
-```bash
-http://localhost:3200/preview/image/nom-du-fichier.jpg
-http://localhost:3200/preview/video/ma-video.mp4
-http://localhost:3200/preview/document/mon-document.pdf
+```
+├── public/
+│   └── browser.html          # Interface file browser
+├── src/
+│   ├── index.ts               # Point d'entree Express
+│   ├── @types/                # Definitions TypeScript
+│   ├── config/
+│   │   ├── logger.ts          # Configuration Pino
+│   │   └── multerConfig.ts    # Configuration upload
+│   ├── controller/
+│   │   └── fileController.ts  # Logique metier
+│   ├── helpers/
+│   │   ├── error-handler.helper.ts
+│   │   └── slug.helper.ts
+│   ├── middleware/
+│   │   ├── auth.middleware.ts
+│   │   └── request-logger.middleware.ts
+│   └── routes/
+│       └── file.routes.ts
+├── upload/                    # Stockage des fichiers
+│   ├── image/
+│   ├── video/
+│   └── document/
+├── Dockerfile
+├── docker-compose.yml
+└── package.json
 ```
 
-## 🐳 Docker
+## Types MIME acceptes
 
-### Dockerfile
+| Categorie | Formats |
+|-----------|---------|
+| Images | JPEG, PNG, SVG, WebP, BMP |
+| Videos | MP4, AVI, MOV, WMV, FLV, WebM, MKV |
+| Documents | PDF, DOCX |
 
-- **Base** : Node.js 22.16 slim
-- **Multi-stage build** pour optimiser la taille
-- **Permissions** : Utilisateur `node` non-root
-- **Health check** intégré
+## Docker
 
-### Docker Compose
-
-```yaml
-version: "3.8"
-services:
-  filer:
-    container_name: filer-service
-    build: .
-    env_file: .env
-    ports:
-      - "3200:3200"
-    volumes:
-      - filer_uploads:/app/upload
-    restart: unless-stopped
-
-volumes:
-  filer_uploads:
-    driver: local
-```
-
-### Documents
-
-- `application/pdf` - Documents PDF
-- `application/vnd.openxmlformats-officedocument.wordprocessingml.document` - DOCX
-
-### Images
-
-- `image/jpeg`, `image/jpg` - Photos JPEG
-- `image/png` - Images PNG
-- `image/svg+xml` - Images vectorielles SVG
-- `image/webp` - Format WebP moderne
-- `image/bmp` - Bitmap
-
-### Vidéos
-
-- `video/mp4` - Vidéos MP4 (recommandé)
-- `video/avi` - Format AVI
-- `video/mov` - Format QuickTime
-- `video/wmv` - Windows Media Video
-- `video/flv` - Flash Video
-- `video/webm` - Format WebM
-- `video/mkv` - Matroska Video
-
-## 🚀 Scripts disponibles
+- **Image** : Node.js 22.16 slim, multi-stage build
+- **Securite** : utilisateur `node` non-root
+- **Health check** integre (`/api/health`)
+- **Volume** : `filer_uploads` pour la persistance
+- **Limites** : 512 MB memoire, 0.5 CPU
 
 ```bash
-# Développement
-npm run dev
-
-# Build
-npm run build
-
-# Production
-npm run start
-
-# Docker
-npm run build:docker
-npm run start:docker
-npm run logs:docker
-npm run stop:docker
+npm run build:docker    # Build
+npm run start:docker    # Demarrer
+npm run logs:docker     # Logs
+npm run stop:docker     # Arreter
 ```
 
-## 🔒 Sécurité
-
-- ✅ **Authentification** par token sur l'interface web
-- ✅ **Validation stricte** des types MIME
-- ✅ **Limitation** de taille et nombre de fichiers
-- ✅ **Isolation Docker** avec utilisateur non-root
-- ✅ **Gestion d'erreurs** robuste
-
-## 📊 Limites actuelles
-
-- **Taille max** : 64MB par fichier
-- **Images** : 6 fichiers maximum
-- **Vidéos** : 2 fichiers maximum
-- **Documents** : 3 fichiers maximum
-- **Types** : Seulement ceux listés ci-dessus
-
-## 🐛 Dépannage
-
-### Problème de permissions Docker
+## Scripts
 
 ```bash
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
+npm run dev             # Dev avec hot-reload
+npm run build           # Compilation TypeScript
+npm start               # Production
+npm run build:docker    # Build Docker
+npm run start:docker    # Start Docker
+npm run logs:docker     # Logs Docker
+npm run stop:docker     # Stop Docker
 ```
 
-### Vérifier les logs
+## Securite
+
+- Authentification par token sur l'interface
+- Validation stricte des types MIME
+- Limitation de taille (64 MB) et nombre de fichiers
+- Isolation Docker avec utilisateur non-root
+- Logging structure pour audit et tracabilite
+- Header `X-Request-Id` sur chaque reponse
+
+## Depannage
 
 ```bash
-docker-compose logs -f filer
-```
-
-### Tester l'API
-
-```bash
+# Verifier le service
 curl http://localhost:3200/api/health
+
+# Voir les logs Docker
+docker-compose logs -f filer
+
+# Rebuild complet
+docker-compose down && docker-compose build --no-cache && docker-compose up -d
 ```
