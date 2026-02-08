@@ -41,6 +41,10 @@ const createUploadDirectories = () => {
 
 createUploadDirectories();
 
+app.get("/favicon.ico", (_req, res) => {
+  res.sendFile(path.join(process.cwd(), "public", "favicon.ico"));
+});
+
 app.get("/", simpleAuth, (_req, res) => {
   res.sendFile(path.join(process.cwd(), "public", "browser.html"));
 });
