@@ -5,6 +5,8 @@ import { unlink, access } from "fs";
 import { join } from "path";
 import { promisify } from "util";
 import { logger } from "../config/logger";
+import { getAllPrivateFiles, setFilePrivacy, removeFileMetadata, getFilePrivacy } from "../services/metadata.service";
+import { extractToken, isValidToken } from "../middleware/auth.middleware";
 
 const unlinkAsync = promisify(unlink);
 const accessAsync = promisify(access);
@@ -97,6 +99,7 @@ export const deleteFile = async (req: Request, res: Response) => {
     }
 
     await unlinkAsync(filePath);
+    await removeFileMetadata(folder, name);
 
     logger.info({ requestId: req.requestId, filename: name, folder, event: "file_deleted" }, "File deleted");
 
@@ -158,6 +161,7 @@ export const listFiles = async (req: Request, res: Response) => {
 
     const folders = folder ? [folder as string] : ['image', 'document', 'video'];
     const allFiles: any[] = [];
+    const privateFiles = await getAllPrivateFiles();
 
     for (const folderName of folders) {
       const folderPath = join(process.cwd(), 'upload', folderName);
@@ -174,7 +178,8 @@ export const listFiles = async (req: Request, res: Response) => {
               size: stats.size,
               created: stats.birthtime,
               modified: stats.mtime,
-              url: `/preview/${folderName}/${filename}`
+              url: `/preview/${folderName}/${filename}`,
+              isPrivate: privateFiles.has(`${folderName}/${filename}`)
             };
           })
         );
@@ -270,6 +275,17 @@ export const downloadFile = async (req: Request, res: Response) => {
       });
     }
 
+    const isPrivate = await getFilePrivacy(folder, name);
+    if (isPrivate) {
+      const token = extractToken(req);
+      if (!isValidToken(token)) {
+        return res.status(401).json({
+          message: "Ce fichier est privé. Un token valide est requis.",
+          error: "UNAUTHORIZED",
+        });
+      }
+    }
+
     logger.info({ requestId: req.requestId, filename: name, folder, event: "file_downloaded" }, "File downloaded");
 
     return res.download(filePath, name);
@@ -278,6 +294,52 @@ export const downloadFile = async (req: Request, res: Response) => {
     return res.status(500).json({
       message: "Erreur lors du téléchargement du fichier.",
       error: 'INTERNAL_ERROR'
+    });
+  }
+};
+
+export const toggleFileVisibility = async (req: Request, res: Response) => {
+  try {
+    const { folder, name, isPrivate } = req.body;
+
+    if (!folder || !name || typeof isPrivate !== "boolean") {
+      return res.status(400).json({
+        message: "folder, name et isPrivate (boolean) sont requis.",
+        error: "MISSING_PARAMETERS",
+      });
+    }
+
+    const allowedFolders = ["image", "document", "video"];
+    if (!allowedFolders.includes(folder)) {
+      return res.status(400).json({
+        message: "Dossier non valide.",
+        error: "INVALID_FOLDER",
+      });
+    }
+
+    const filePath = join(process.cwd(), "upload", folder, name);
+    try {
+      await accessAsync(filePath);
+    } catch {
+      return res.status(404).json({
+        message: "Fichier non trouvé.",
+        error: "FILE_NOT_FOUND",
+      });
+    }
+
+    await setFilePrivacy(folder, name, isPrivate);
+
+    return res.json({
+      message: `Visibilité mise à jour: ${isPrivate ? "privé" : "public"}.`,
+      name,
+      folder,
+      isPrivate,
+    });
+  } catch (error) {
+    logger.error({ requestId: req.requestId, err: error }, "Toggle visibility failed");
+    return res.status(500).json({
+      message: "Erreur lors de la mise à jour de la visibilité.",
+      error: "INTERNAL_ERROR",
     });
   }
 };

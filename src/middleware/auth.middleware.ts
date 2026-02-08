@@ -3,6 +3,30 @@ import { logger } from "../config/logger";
 
 const HARD_CODED_TOKEN = "admin123";
 
+export function isValidToken(token: string | undefined | null): boolean {
+  return token === HARD_CODED_TOKEN;
+}
+
+export function extractToken(req: Request): string | null {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    return authHeader.substring(7);
+  }
+  if (req.query.token) {
+    return req.query.token as string;
+  }
+  return null;
+}
+
+export const apiAuth = (req: Request, res: Response, next: NextFunction): void => {
+  const token = extractToken(req);
+  if (!isValidToken(token)) {
+    res.status(401).json({ message: "Unauthorized", error: "UNAUTHORIZED" });
+    return;
+  }
+  next();
+};
+
 export const simpleAuth = (req: Request, res: Response, next: NextFunction): void => {
   const token = req.query.token as string;
 

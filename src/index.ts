@@ -5,9 +5,11 @@ import { mkdirSync } from "fs";
 import * as dotenv from "dotenv";
 
 import { router } from "./routes";
-import { simpleAuth } from "./middleware/auth.middleware";
+import { simpleAuth, extractToken, isValidToken } from "./middleware/auth.middleware";
 import { requestLogger } from "./middleware/request-logger.middleware";
 import { logger } from "./config/logger";
+import { getFilePrivacy } from "./services/metadata.service";
+import { access as fsAccess } from "fs/promises";
 
 dotenv.config();
 
@@ -45,7 +47,40 @@ app.get("/", simpleAuth, (_req, res) => {
 
 app.use("/api", router);
 
-app.use("/preview", express.static("upload"));
+app.get("/preview/:folder/:filename", async (req, res) => {
+  const { folder, filename } = req.params;
+
+  const allowedFolders = ["image", "document", "video"];
+  if (!allowedFolders.includes(folder)) {
+    return res.status(400).json({ message: "Dossier non valide.", error: "INVALID_FOLDER" });
+  }
+
+  if (filename.includes("..") || filename.includes("/") || filename.includes("\\") || filename.startsWith(".")) {
+    return res.status(400).json({ message: "Nom de fichier non valide.", error: "INVALID_FILENAME" });
+  }
+
+  const filePath = path.join(process.cwd(), "upload", folder, filename);
+
+  try {
+    await fsAccess(filePath);
+  } catch {
+    return res.status(404).json({ message: "Fichier non trouvé.", error: "FILE_NOT_FOUND" });
+  }
+
+  const isPrivate = await getFilePrivacy(folder, filename);
+
+  if (isPrivate) {
+    const token = extractToken(req);
+    if (!isValidToken(token)) {
+      return res.status(401).json({
+        message: "Ce fichier est privé. Un token valide est requis.",
+        error: "UNAUTHORIZED",
+      });
+    }
+  }
+
+  return res.sendFile(filePath);
+});
 
 app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
   logger.error({ err, stack: err.stack }, "Unhandled error");

@@ -17,6 +17,7 @@ export interface IFile {
   path: string;
   fieldname: string;
   url: string;
+  isPrivate?: boolean;
 }
 
 export interface ObjectAuthorizedMimeTypes {

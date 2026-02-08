@@ -340,11 +340,7 @@
     .file-actions {
       display: flex;
       gap: 4px;
-      opacity: 0;
-      transition: opacity 0.15s;
     }
-
-    tbody tr:hover .file-actions { opacity: 1; }
 
     .action-btn {
       padding: 5px 8px;
@@ -686,6 +682,7 @@
           <th onclick="sortBy('folder')">Type <span class="sort-icon">&#9650;&#9660;</span></th>
           <th onclick="sortBy('size')">Taille <span class="sort-icon">&#9650;&#9660;</span></th>
           <th onclick="sortBy('modified')">Modifie <span class="sort-icon">&#9650;&#9660;</span></th>
+          <th>Visibilite</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -898,10 +895,21 @@
         <td>${formatSize(file.size)}</td>
         <td>${formatDate(file.modified)}</td>
         <td>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.8em;white-space:nowrap">
+            <input type="checkbox"
+              ${file.isPrivate ? 'checked' : ''}
+              onchange="toggleVisibility('${escapeHtml(file.folder)}', '${escapeHtml(file.name)}', this.checked)"
+              style="cursor:pointer;width:14px;height:14px;accent-color:var(--danger)">
+            <span style="color:${file.isPrivate ? 'var(--danger)' : 'var(--text-secondary)'}">
+              ${file.isPrivate ? '&#128274; Prive' : '&#128275; Public'}
+            </span>
+          </label>
+        </td>
+        <td>
           <div class="file-actions">
-            <button class="action-btn" onclick="previewFile(${idx})" title="Apercu">&#128065;</button>
-            <button class="action-btn" onclick="downloadFileAction('${file.folder}', '${escapeHtml(file.name)}')" title="Telecharger">&#128229;</button>
-            <button class="action-btn delete" onclick="deleteSingleFile(${idx})" title="Supprimer">&#128465;</button>
+            <button class="action-btn" onclick="previewFile(${idx})" title="Apercu">👁️</button>
+            <button class="action-btn" onclick="downloadFileAction('${file.folder}', '${escapeHtml(file.name)}')" title="Telecharger">📥</button>
+            <button class="action-btn delete" onclick="deleteSingleFile(${idx})" title="Supprimer">🗑️</button>
           </div>
         </td>
       </tr>
@@ -966,6 +974,30 @@
     refreshFiles();
   }
 
+  // ========== VISIBILITY ==========
+  async function toggleVisibility(folder, name, isPrivate) {
+    try {
+      const res = await apiFetch('/api/files/visibility', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folder, name, isPrivate })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const file = allFiles.find(f => f.name === name && f.folder === folder);
+        if (file) file.isPrivate = isPrivate;
+        applyFilters();
+        showToast(isPrivate ? 'Fichier passe en prive' : 'Fichier passe en public', 'success');
+      } else {
+        showToast(data.message || 'Erreur lors de la mise a jour', 'error');
+        applyFilters();
+      }
+    } catch {
+      showToast('Erreur de connexion', 'error');
+      applyFilters();
+    }
+  }
+
   // ========== PREVIEW ==========
   function previewFile(idx) {
     const file = displayedFiles[idx];
@@ -977,7 +1009,10 @@
     const footer = document.getElementById('previewFooter');
 
     title.textContent = file.name;
-    const previewUrl = file.url;
+    let previewUrl = file.url;
+    if (file.isPrivate && token) {
+      previewUrl = file.url + '?token=' + encodeURIComponent(token);
+    }
     const fullUrl = window.location.origin + previewUrl;
     const urlEl = document.getElementById('previewUrl');
     urlEl.textContent = fullUrl;
@@ -1003,9 +1038,10 @@
       `;
     }
 
+    const downloadUrl = `/api/download/${file.folder}/${encodeURIComponent(file.name)}` + (file.isPrivate && token ? '?token=' + encodeURIComponent(token) : '');
     footer.innerHTML = `
       <button class="btn btn-outline" onclick="closePreviewModal()">Fermer</button>
-      <a class="btn btn-primary" href="/api/download/${file.folder}/${encodeURIComponent(file.name)}" style="text-decoration:none">&#128229; Telecharger</a>
+      <a class="btn btn-primary" href="${downloadUrl}" style="text-decoration:none">&#128229; Telecharger</a>
     `;
 
     modal.classList.add('visible');
