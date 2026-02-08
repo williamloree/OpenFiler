@@ -438,6 +438,22 @@
       max-width: 500px;
     }
 
+    .preview-url {
+      font-size: 0.75em;
+      color: var(--text-secondary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 500px;
+      cursor: pointer;
+      user-select: all;
+      margin-top: 2px;
+    }
+
+    .preview-url:hover {
+      color: var(--primary);
+    }
+
     .modal-close {
       background: none;
       border: none;
@@ -690,7 +706,10 @@
 <div class="modal-overlay" id="previewModal">
   <div class="modal">
     <div class="modal-header">
-      <h3 id="previewTitle">Preview</h3>
+      <div style="overflow:hidden;flex:1">
+        <h3 id="previewTitle">Preview</h3>
+        <div class="preview-url" id="previewUrl" title="Cliquer pour copier l'URL"></div>
+      </div>
       <button class="modal-close" onclick="closePreviewModal()">&times;</button>
     </div>
     <div class="modal-body" id="previewBody"></div>
@@ -959,6 +978,12 @@
 
     title.textContent = file.name;
     const previewUrl = file.url;
+    const fullUrl = window.location.origin + previewUrl;
+    const urlEl = document.getElementById('previewUrl');
+    urlEl.textContent = fullUrl;
+    urlEl.onclick = () => {
+      navigator.clipboard.writeText(fullUrl).then(() => showToast('URL copiee !', 'success'));
+    };
 
     if (file.folder === 'image') {
       body.innerHTML = `<img src="${previewUrl}" alt="${escapeHtml(file.name)}">`;
