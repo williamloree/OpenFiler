@@ -23,7 +23,7 @@ router.get("/health", (_req, res) => {
 
 router.get("/config/allowed-types", (_req, res) => {
   res.json({
-    image: ["image/jpeg", "image/jpg", "image/png", "image/svg+xml", "image/webp", "image/bmp"],
+    image: ["image/jpeg", "image/jpg", "image/png", "image/svg+xml", "image/webp", "image/bmp", "image/x-icon"],
     document: ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
     video: ["video/mp4", "video/avi", "video/mov", "video/wmv", "video/flv", "video/webm", "video/mkv"],
     limits: {

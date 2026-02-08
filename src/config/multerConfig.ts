@@ -16,6 +16,7 @@ const authorizedMimeTypes: ObjectAuthorizedMimeTypes = {
     "image/svg+xml",
     "image/webp",
     "image/bmp",
+    "image/x-icon",
   ],
   document: [
     "application/pdf",
