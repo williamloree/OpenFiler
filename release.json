@@ -1,1 +1,19 @@
-[]
+[
+  {
+    "version": "1.0.0",
+    "date": "2026-02-08",
+    "tag": "v1.0.0",
+    "changes": [
+      "ci: add auto-release workflow with release.json tracking",
+      "add ico",
+      "favicon Fixes #3",
+      "auth preview Fixes #2",
+      "url into preview Fixes #1",
+      "Fix readme",
+      "feat: add structured logging with Pino and MinIO-like file browser UI",
+      "fix",
+      "init",
+      "first commit"
+    ]
+  }
+]
