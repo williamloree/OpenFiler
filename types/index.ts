@@ -1,0 +1,128 @@
+// ===== Domain =====
+
+export interface FileInfo {
+  name: string;
+  folder: string;
+  size: number;
+  created: string;
+  modified: string;
+  url: string;
+  isPrivate: boolean;
+}
+
+export interface Stats {
+  totalFiles: number;
+  totalSize: number;
+  folders: Record<string, { count: number; size: number }>;
+}
+
+export type SortField = "name" | "folder" | "size" | "modified";
+export type SortDir = "asc" | "desc";
+
+export interface Toast {
+  id: number;
+  message: string;
+  type: string;
+}
+
+export interface ApiToken {
+  id: string;
+  name: string;
+  token: string;
+  createdAt: string;
+}
+
+// ===== Component Props =====
+
+export interface ItemProps {
+  file: FileInfo;
+  selected: boolean;
+  isRenaming: boolean;
+  renameValue: string;
+  onSelect: () => void;
+  onToggleVisibility: (isPrivate: boolean) => void;
+  onPreview: () => void;
+  onStartRename: () => void;
+  onRenameChange: (value: string) => void;
+  onRenameConfirm: () => void;
+  onRenameCancel: () => void;
+  onDownload: () => void;
+  onDelete: () => void;
+}
+
+export interface TableProps {
+  files: FileInfo[];
+  selectedFiles: Set<string>;
+  sortField: SortField;
+  sortDir: SortDir;
+  renamingFile: FileInfo | null;
+  renameValue: string;
+  onSort: (field: SortField) => void;
+  onToggleSelectAll: () => void;
+  onSelect: (filename: string) => void;
+  onToggleVisibility: (folder: string, name: string, isPrivate: boolean) => void;
+  onPreview: (file: FileInfo) => void;
+  onStartRename: (file: FileInfo) => void;
+  onRenameChange: (value: string) => void;
+  onRenameConfirm: (file: FileInfo) => void;
+  onRenameCancel: () => void;
+  onDownload: (file: FileInfo) => void;
+  onDelete: (file: FileInfo) => void;
+}
+
+export interface ToolbarProps {
+  currentFolder: string;
+  selectFolder: (folder: string) => void;
+  search: string;
+  onSearchChange: (value: string) => void;
+  onRefresh: () => void;
+  onOpenUpload: () => void;
+}
+
+export interface SidebarProps {
+  currentFolder: string;
+  selectFolder: (folder: string) => void;
+  stats: Stats;
+  storagePct: number;
+  userName: string;
+  onOpenSettings: () => void;
+  onSignOut: () => void;
+}
+
+export interface BatchBarProps {
+  selectedCount: number;
+  onDownload: () => void;
+  onDelete: () => void;
+  onClear: () => void;
+}
+
+export interface PaginationProps {
+  totalFiles: number;
+  pageLimit: number;
+  page: number;
+  onPageChange: (page: number) => void;
+}
+
+export interface ToastsProps {
+  toasts: Toast[];
+}
+
+export interface PreviewModalProps {
+  file: FileInfo;
+  onClose: () => void;
+  onCopyUrl: () => void;
+}
+
+export interface UploadModalProps {
+  uploading: boolean;
+  uploadProgress: number;
+  uploadStatus: string;
+  onUpload: (files: FileList) => void;
+  onClose: () => void;
+}
+
+export interface SettingsModalProps {
+  userName: string;
+  userEmail: string;
+  onClose: () => void;
+}

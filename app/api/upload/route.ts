@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { join } from "path";
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, writeFile, statfs } from "fs/promises";
 import { getSlugifiedFilename } from "@/lib/slug";
 import { ALLOWED_MIME_TYPES, MAX_FILE_SIZE, MAX_FILES_PER_FIELD, getFolderForMimeType } from "@/lib/upload-config";
 import { db } from "@/lib/auth/server";
 import { requireSession } from "@/lib/auth/require-session";
+
+const DISK_BUFFER = 100 * 1024 * 1024; // 100 MB safety buffer
 
 interface UploadedFile {
   name: string;
@@ -47,6 +49,27 @@ export async function POST(request: NextRequest) {
         { message: "Aucun fichier n'a été uploadé.", error: "NO_FILES" },
         { status: 400 }
       );
+    }
+
+    // Check disk space before writing
+    const totalUploadSize = entries.reduce((sum, [, value]) => {
+      return sum + (value instanceof File ? value.size : 0);
+    }, 0);
+
+    try {
+      const uploadDir = join(process.cwd(), "upload");
+      await mkdir(uploadDir, { recursive: true });
+      const stats = await statfs(uploadDir);
+      const freeSpace = stats.bfree * stats.bsize;
+
+      if (freeSpace < totalUploadSize + DISK_BUFFER) {
+        return NextResponse.json(
+          { message: "Espace disque insuffisant.", error: "DISK_FULL" },
+          { status: 507 }
+        );
+      }
+    } catch {
+      // statfs not available on this platform — skip check
     }
 
     for (const [fieldname, value] of entries) {
