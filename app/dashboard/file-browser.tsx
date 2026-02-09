@@ -66,7 +66,12 @@ export function FileBrowser({ userName, userEmail }: { userName: string; userEma
   const [uploadStatus, setUploadStatus] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalFiles, setTotalFiles] = useState(0);
+  const [renamingFile, setRenamingFile] = useState<FileInfo | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
+  const PAGE_LIMIT = 50;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toastIdRef = useRef(0);
 
@@ -76,17 +81,22 @@ export function FileBrowser({ userName, userEmail }: { userName: string; userEma
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }, []);
 
-  const refreshFiles = useCallback(async () => {
+  const refreshFiles = useCallback(async (p?: number) => {
     try {
-      const [filesRes, statsRes] = await Promise.all([fetch("/api/files"), fetch("/api/stats")]);
+      const currentPage = p ?? page;
+      const [filesRes, statsRes] = await Promise.all([
+        fetch(`/api/files?page=${currentPage}&limit=${PAGE_LIMIT}`),
+        fetch("/api/stats"),
+      ]);
       const filesData = await filesRes.json();
       const statsData = await statsRes.json();
       setAllFiles(filesData.files || []);
+      setTotalFiles(filesData.total ?? 0);
       setStats(statsData);
     } catch {
       showToast("Erreur de chargement", "error");
     }
-  }, [showToast]);
+  }, [showToast, page]);
 
   useEffect(() => {
     refreshFiles();
@@ -132,6 +142,7 @@ export function FileBrowser({ userName, userEmail }: { userName: string; userEma
   function selectFolder(folder: string) {
     setCurrentFolder(folder);
     setSelectedFiles(new Set());
+    setPage(1);
   }
 
   function toggleSelect(filename: string) {
@@ -192,6 +203,65 @@ export function FileBrowser({ userName, userEmail }: { userName: string; userEma
     showToast(`${deleted} fichier(s) supprimé(s)`, "success");
     setSelectedFiles(new Set());
     refreshFiles();
+  }
+
+  async function handleRename(file: FileInfo) {
+    const newName = renameValue.trim();
+    if (!newName || newName === file.name) {
+      setRenamingFile(null);
+      return;
+    }
+    try {
+      const res = await fetch("/api/files", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder: file.folder, oldName: file.name, newName }),
+      });
+      if (res.ok) {
+        showToast("Fichier renommé", "success");
+        refreshFiles();
+      } else {
+        const data = await res.json();
+        showToast(data.message, "error");
+      }
+    } catch {
+      showToast("Erreur de connexion", "error");
+    }
+    setRenamingFile(null);
+  }
+
+  async function batchDownload() {
+    const filesToDownload = allFiles
+      .filter((f) => selectedFiles.has(f.name))
+      .map((f) => ({ folder: f.folder, name: f.name }));
+    if (filesToDownload.length === 0) return;
+    try {
+      const res = await fetch("/api/download/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ files: filesToDownload }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        showToast(data.message || "Erreur", "error");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "openfiler-download.zip";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast("Erreur de connexion", "error");
+    }
+  }
+
+  function goToPage(p: number) {
+    setPage(p);
+    setSelectedFiles(new Set());
+    refreshFiles(p);
   }
 
   async function toggleVisibility(folder: string, name: string, isPrivate: boolean) {
@@ -357,6 +427,9 @@ export function FileBrowser({ userName, userEmail }: { userName: string; userEma
             <span>
               <strong>{selectedFiles.size}</strong> fichier(s) sélectionné(s)
             </span>
+            <button className="fb-btn fb-btn-sm" onClick={batchDownload}>
+              Télécharger (.zip)
+            </button>
             <button className="fb-btn fb-btn-sm" onClick={batchDelete}>
               Supprimer la sélection
             </button>
@@ -408,7 +481,23 @@ export function FileBrowser({ userName, userEmail }: { userName: string; userEma
                     <td>
                       <div className="fb-file-name-cell">
                         <div className={`fb-file-icon ${file.folder}`}>{getFolderIcon(file.folder)}</div>
-                        <div className="fb-file-name" title={file.name}>{file.name}</div>
+                        {renamingFile?.name === file.name && renamingFile?.folder === file.folder ? (
+                          <input
+                            autoFocus
+                            type="text"
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleRename(file);
+                              if (e.key === "Escape") setRenamingFile(null);
+                            }}
+                            onBlur={() => handleRename(file)}
+                            className="fb-file-name"
+                            style={{ border: "1px solid var(--fb-primary)", borderRadius: 4, padding: "2px 6px", outline: "none", width: "100%" }}
+                          />
+                        ) : (
+                          <div className="fb-file-name" title={file.name}>{file.name}</div>
+                        )}
                       </div>
                     </td>
                     <td><span className="fb-file-folder">{file.folder}</span></td>
@@ -430,6 +519,13 @@ export function FileBrowser({ userName, userEmail }: { userName: string; userEma
                       <div className="fb-file-actions">
                         <button className="fb-action-btn" onClick={() => setPreviewFile(file)} title="Aperçu">
                           &#128065;&#65039;
+                        </button>
+                        <button
+                          className="fb-action-btn"
+                          onClick={() => { setRenamingFile(file); setRenameValue(file.name); }}
+                          title="Renommer"
+                        >
+                          &#9998;&#65039;
                         </button>
                         <button
                           className="fb-action-btn"
@@ -455,6 +551,29 @@ export function FileBrowser({ userName, userEmail }: { userName: string; userEma
             <p>Ce dossier est vide. Uploadez des fichiers pour commencer.</p>
             <button className="fb-btn fb-btn-primary" style={{ marginTop: 16 }} onClick={() => { setUploadOpen(true); setUploading(false); }}>
               &#8679; Upload
+            </button>
+          </div>
+        )}
+
+        {/* PAGINATION */}
+        {totalFiles > PAGE_LIMIT && (
+          <div className="fb-batch-bar" style={{ justifyContent: "center" }}>
+            <button
+              className="fb-btn fb-btn-sm"
+              disabled={page <= 1}
+              onClick={() => goToPage(page - 1)}
+            >
+              Précédent
+            </button>
+            <span style={{ fontSize: 14 }}>
+              Page {page} sur {Math.ceil(totalFiles / PAGE_LIMIT)}
+            </span>
+            <button
+              className="fb-btn fb-btn-sm"
+              disabled={page >= Math.ceil(totalFiles / PAGE_LIMIT)}
+              onClick={() => goToPage(page + 1)}
+            >
+              Suivant
             </button>
           </div>
         )}
