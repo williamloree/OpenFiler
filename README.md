@@ -185,6 +185,7 @@ OpenFiler aims to be a clean, extensible file management platform:
 - **Production-ready architecture** — swap to PostgreSQL, add S3 storage, deploy to any cloud
 - **Open-source first** — clean code, clear documentation, ready for contributions
 
-## License
 
-ISC
+## Licence
+
+MIT License - voir [LICENSE](LICENSE)
