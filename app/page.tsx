@@ -12,5 +12,5 @@ export default async function HomePage() {
     redirect("/login");
   }
 
-  return <FileBrowser userName={session.user.name ?? session.user.email} />;
+  return <FileBrowser userName={session.user.name ?? session.user.email} userEmail={session.user.email} />;
 }

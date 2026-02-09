@@ -49,7 +49,7 @@ function getFolderIcon(folder: string): string {
   return icons[folder] || "\u{1F4C4}";
 }
 
-export function FileBrowser({ userName }: { userName: string }) {
+export function FileBrowser({ userName, userEmail }: { userName: string; userEmail: string }) {
   const [allFiles, setAllFiles] = useState<FileInfo[]>([]);
   const [stats, setStats] = useState<Stats>({ totalFiles: 0, totalSize: 0, folders: {} });
   const [currentFolder, setCurrentFolder] = useState("all");
@@ -65,6 +65,7 @@ export function FileBrowser({ userName }: { userName: string }) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toastIdRef = useRef(0);
@@ -312,9 +313,9 @@ export function FileBrowser({ userName }: { userName: string }) {
           <div className="fb-sidebar-user">
             <span className="fb-user-name">{userName}</span>
             <div style={{ display: "flex", gap: 8 }}>
-              <a href="/settings" className="fb-signout-btn" style={{ textDecoration: "none", textAlign: "center" }}>
+              <button className="fb-signout-btn" onClick={() => setSettingsOpen(true)}>
                 Settings
-              </a>
+              </button>
               <button className="fb-signout-btn" onClick={handleSignOut}>
                 Déconnexion
               </button>
@@ -567,6 +568,25 @@ export function FileBrowser({ userName }: { userName: string }) {
         </div>
       )}
 
+      {/* SETTINGS MODAL */}
+      {settingsOpen && (
+        <div className="fb-modal-overlay" onClick={() => setSettingsOpen(false)}>
+          <div className="fb-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520, width: "100%" }}>
+            <div className="fb-modal-header">
+              <h3>Settings</h3>
+              <button className="fb-modal-close" onClick={() => setSettingsOpen(false)}>
+                &times;
+              </button>
+            </div>
+            <div className="fb-modal-body" style={{ flexDirection: "column", padding: 24, gap: 24, alignItems: "stretch" }}>
+              <ProfileSection currentName={userName} />
+              <EmailSection currentEmail={userEmail} />
+              <PasswordSection />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TOASTS */}
       <div className="fb-toast-container">
         {toasts.map((toast) => (
@@ -576,5 +596,204 @@ export function FileBrowser({ userName }: { userName: string }) {
         ))}
       </div>
     </div>
+  );
+}
+
+function ProfileSection({ currentName }: { currentName: string }) {
+  const [name, setName] = useState(currentName);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
+    try {
+      const result = await authClient.updateUser({ name });
+      if (result.error) {
+        setMessage(result.error.message ?? "Erreur lors de la mise à jour");
+      } else {
+        setMessage("Nom mis à jour");
+      }
+    } catch {
+      setMessage("Erreur de connexion");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-border bg-white p-6">
+      <h2 className="text-lg font-semibold mb-4">Profil</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="settings-name" className="block text-sm font-medium mb-1">Nom</label>
+          <input
+            id="settings-name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
+          />
+        </div>
+        {message && (
+          <p className={`text-sm ${message.includes("Erreur") ? "text-danger" : "text-green-600"}`}>{message}</p>
+        )}
+        <button
+          type="submit"
+          disabled={loading || name === currentName}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
+        >
+          {loading ? "..." : "Enregistrer"}
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function EmailSection({ currentEmail }: { currentEmail: string }) {
+  const [newEmail, setNewEmail] = useState(currentEmail);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
+    try {
+      const result = await authClient.changeEmail({ newEmail });
+      if (result.error) {
+        setMessage(result.error.message ?? "Erreur lors de la mise à jour");
+      } else {
+        setMessage("Email mis à jour");
+      }
+    } catch {
+      setMessage("Erreur de connexion");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-border bg-white p-6">
+      <h2 className="text-lg font-semibold mb-4">Email</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="settings-email" className="block text-sm font-medium mb-1">Adresse email</label>
+          <input
+            id="settings-email"
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            required
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
+          />
+        </div>
+        {message && (
+          <p className={`text-sm ${message.includes("Erreur") ? "text-danger" : "text-green-600"}`}>{message}</p>
+        )}
+        <button
+          type="submit"
+          disabled={loading || newEmail === currentEmail}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
+        >
+          {loading ? "..." : "Modifier l'email"}
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function PasswordSection() {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setMessage("");
+    if (newPassword !== confirmPassword) {
+      setMessage("Les mots de passe ne correspondent pas");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setMessage("Le mot de passe doit contenir au moins 8 caractères");
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await authClient.changePassword({ currentPassword, newPassword });
+      if (result.error) {
+        setMessage(result.error.message ?? "Erreur lors de la mise à jour");
+      } else {
+        setMessage("Mot de passe mis à jour");
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      }
+    } catch {
+      setMessage("Erreur de connexion");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-border bg-white p-6">
+      <h2 className="text-lg font-semibold mb-4">Mot de passe</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="settings-current-password" className="block text-sm font-medium mb-1">Mot de passe actuel</label>
+          <input
+            id="settings-current-password"
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            required
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
+            placeholder="••••••••"
+          />
+        </div>
+        <div>
+          <label htmlFor="settings-new-password" className="block text-sm font-medium mb-1">Nouveau mot de passe</label>
+          <input
+            id="settings-new-password"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
+            placeholder="••••••••"
+          />
+        </div>
+        <div>
+          <label htmlFor="settings-confirm-password" className="block text-sm font-medium mb-1">Confirmer le nouveau mot de passe</label>
+          <input
+            id="settings-confirm-password"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
+            placeholder="••••••••"
+          />
+        </div>
+        {message && (
+          <p className={`text-sm ${message.includes("Erreur") || message.includes("correspondent") || message.includes("caractères") ? "text-danger" : "text-green-600"}`}>
+            {message}
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={loading || !currentPassword || !newPassword || !confirmPassword}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
+        >
+          {loading ? "..." : "Modifier le mot de passe"}
+        </button>
+      </form>
+    </section>
   );
 }
