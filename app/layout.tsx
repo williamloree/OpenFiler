@@ -4,6 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "OpenFiler",
   description: "Modern open-source file management platform",
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({
