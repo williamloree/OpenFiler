@@ -3,6 +3,8 @@ import { join } from "path";
 import { mkdir, writeFile } from "fs/promises";
 import { getSlugifiedFilename } from "@/lib/slug";
 import { ALLOWED_MIME_TYPES, MAX_FILE_SIZE, MAX_FILES_PER_FIELD, getFolderForMimeType } from "@/lib/upload-config";
+import { db } from "@/lib/auth/server";
+import { requireSession } from "@/lib/auth/require-session";
 
 interface UploadedFile {
   name: string;
@@ -16,6 +18,24 @@ interface UploadedFile {
 
 export async function POST(request: NextRequest) {
   try {
+    // Auth: Bearer token or session
+    const authHeader = request.headers.get("authorization");
+    let authenticated = false;
+
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      const row = db.prepare("SELECT id FROM api_token WHERE token = ?").get(token);
+      authenticated = !!row;
+    }
+
+    if (!authenticated) {
+      const session = await requireSession(request);
+      authenticated = !!session;
+    }
+
+    if (!authenticated) {
+      return NextResponse.json({ error: "UNAUTHORIZED", message: "Token ou session requis." }, { status: 401 });
+    }
     const formData = await request.formData();
     const files: UploadedFile[] = [];
     const fieldCounts: Record<string, number> = {};

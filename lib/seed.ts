@@ -49,6 +49,13 @@ function ensureTables() {
       "createdAt" TEXT,
       "updatedAt" TEXT
     );
+    CREATE TABLE IF NOT EXISTS "api_token" (
+      "id" TEXT PRIMARY KEY,
+      "name" TEXT NOT NULL,
+      "token" TEXT NOT NULL UNIQUE,
+      "userId" TEXT NOT NULL REFERENCES "user"("id"),
+      "createdAt" TEXT NOT NULL
+    );
   `);
 }
 
