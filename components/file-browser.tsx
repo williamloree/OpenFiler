@@ -423,9 +423,15 @@ export function FileBrowser({ userName }: { userName: string }) {
                     </td>
                     <td>
                       <div className="fb-file-actions">
-                        <button className="fb-action-btn" onClick={() => setPreviewFile(file)} title="Aperçu">
-                          &#128065;&#65039;
-                        </button>
+                        {file.isPrivate ? (
+                          <button className="fb-action-btn fb-private-btn" title="Fichier privé — aperçu désactivé" disabled>
+                            &#128274;
+                          </button>
+                        ) : (
+                          <button className="fb-action-btn" onClick={() => setPreviewFile(file)} title="Aperçu">
+                            &#128065;&#65039;
+                          </button>
+                        )}
                         <button
                           className="fb-action-btn"
                           onClick={() => window.open(`/api/download/${file.folder}/${encodeURIComponent(file.name)}`, "_blank")}

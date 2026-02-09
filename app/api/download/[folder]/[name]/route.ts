@@ -6,7 +6,7 @@ import { getFilePrivacy } from "@/lib/metadata";
 import { requireSession } from "@/lib/auth/require-session";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ folder: string; name: string }> }
 ) {
   try {
@@ -39,7 +39,7 @@ export async function GET(
 
     const isPrivate = await getFilePrivacy(folder, name);
     if (isPrivate) {
-      const session = await requireSession();
+      const session = await requireSession(request);
       if (!session) {
         return NextResponse.json(
           { message: "Ce fichier est privé. Une session valide est requise.", error: "UNAUTHORIZED" },
@@ -53,6 +53,7 @@ export async function GET(
       headers: {
         "Content-Disposition": `attachment; filename="${encodeURIComponent(name)}"`,
         "Content-Type": "application/octet-stream",
+        "Cache-Control": "private, no-store",
       },
     });
   } catch {

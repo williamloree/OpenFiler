@@ -462,6 +462,17 @@
   color: var(--fb-danger);
 }
 
+.fb-action-btn.fb-private-btn {
+  color: var(--fb-danger);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fb-action-btn.fb-private-btn:hover {
+  background: transparent;
+  color: var(--fb-danger);
+}
+
 .fb-visibility-label {
   display: flex;
   align-items: center;

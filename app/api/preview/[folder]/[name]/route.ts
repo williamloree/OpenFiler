@@ -7,7 +7,7 @@ import { requireSession } from "@/lib/auth/require-session";
 import { lookup } from "@/lib/mime";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ folder: string; name: string }> }
 ) {
   try {
@@ -40,7 +40,7 @@ export async function GET(
 
     const isPrivate = await getFilePrivacy(folder, name);
     if (isPrivate) {
-      const session = await requireSession();
+      const session = await requireSession(request);
       if (!session) {
         return NextResponse.json(
           { message: "Ce fichier est privé. Une session valide est requise.", error: "UNAUTHORIZED" },
@@ -55,7 +55,9 @@ export async function GET(
     return new NextResponse(fileBuffer, {
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": isPrivate
+          ? "private, no-store, no-cache, must-revalidate"
+          : "public, max-age=31536000, immutable",
       },
     });
   } catch {

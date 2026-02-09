@@ -7,7 +7,7 @@ import { requireSession } from "@/lib/auth/require-session";
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await requireSession();
+    const session = await requireSession(request);
     if (!session) {
       return NextResponse.json(
         { message: "Unauthorized", error: "UNAUTHORIZED" },
