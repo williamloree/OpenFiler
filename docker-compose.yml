@@ -1,0 +1,18 @@
+services:
+  openfiler:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-change-me-in-production}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3000}
+      - DATABASE_URL=/app/data/openfiler.db
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+    volumes:
+      - openfiler-uploads:/app/upload
+      - openfiler-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  openfiler-uploads:
+  openfiler-data:
