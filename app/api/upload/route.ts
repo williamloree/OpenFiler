@@ -1,0 +1,106 @@
+import { NextRequest, NextResponse } from "next/server";
+import { join } from "path";
+import { mkdir, writeFile } from "fs/promises";
+import { getSlugifiedFilename } from "@/lib/slug";
+import { ALLOWED_MIME_TYPES, MAX_FILE_SIZE, MAX_FILES_PER_FIELD, getFolderForMimeType } from "@/lib/upload-config";
+
+interface UploadedFile {
+  name: string;
+  defaultName: string;
+  type: string;
+  size: number;
+  path: string;
+  fieldname: string;
+  url: string;
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const formData = await request.formData();
+    const files: UploadedFile[] = [];
+    const fieldCounts: Record<string, number> = {};
+
+    const entries = Array.from(formData.entries());
+
+    if (entries.length === 0) {
+      return NextResponse.json(
+        { message: "Aucun fichier n'a été uploadé.", error: "NO_FILES" },
+        { status: 400 }
+      );
+    }
+
+    for (const [fieldname, value] of entries) {
+      if (!(value instanceof File)) continue;
+
+      const file = value;
+      const folder = getFolderForMimeType(file.type) ?? fieldname;
+
+      // Validate MIME type
+      const allowedTypes = ALLOWED_MIME_TYPES[folder];
+      if (!allowedTypes || !allowedTypes.includes(file.type)) {
+        return NextResponse.json(
+          {
+            message: `Type de fichier non autorisé pour le champ "${folder}". Type reçu: ${file.type}`,
+            error: "INVALID_FILE_TYPE",
+          },
+          { status: 400 }
+        );
+      }
+
+      // Check file size
+      if (file.size > MAX_FILE_SIZE) {
+        return NextResponse.json(
+          { message: "Le fichier est trop volumineux (maximum 64MB).", error: "FILE_TOO_LARGE" },
+          { status: 400 }
+        );
+      }
+
+      // Check max files per field
+      fieldCounts[folder] = (fieldCounts[folder] || 0) + 1;
+      if (fieldCounts[folder] > (MAX_FILES_PER_FIELD[folder] || 10)) {
+        return NextResponse.json(
+          { message: "Trop de fichiers uploadés.", error: "TOO_MANY_FILES" },
+          { status: 400 }
+        );
+      }
+
+      const filename = `${Date.now()}_${getSlugifiedFilename(file.name)}`;
+      const folderPath = join(process.cwd(), "upload", folder);
+      await mkdir(folderPath, { recursive: true });
+
+      const buffer = Buffer.from(await file.arrayBuffer());
+      await writeFile(join(folderPath, filename), buffer);
+
+      files.push({
+        name: filename,
+        defaultName: file.name,
+        type: file.type,
+        size: file.size,
+        path: `/${folder}`,
+        fieldname: folder,
+        url: `/api/preview/${folder}/${filename}`,
+      });
+    }
+
+    if (files.length === 0) {
+      return NextResponse.json(
+        { message: "Aucun fichier n'a été uploadé.", error: "NO_FILES" },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        message: `${files.length} fichier(s) uploadé(s) avec succès.`,
+        files,
+        count: files.length,
+      },
+      { status: 201 }
+    );
+  } catch {
+    return NextResponse.json(
+      { message: "Erreur lors de l'enregistrement des fichiers.", error: "INTERNAL_ERROR" },
+      { status: 500 }
+    );
+  }
+}

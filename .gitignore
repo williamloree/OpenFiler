@@ -45,5 +45,8 @@ next-env.d.ts
 .vscode/
 .idea/
 
-# uploads
-upload/
+# uploads (root-level only, not app/api/upload/)
+/upload/
+
+# database
+*.db
