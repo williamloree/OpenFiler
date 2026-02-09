@@ -311,9 +311,14 @@ export function FileBrowser({ userName }: { userName: string }) {
           </div>
           <div className="fb-sidebar-user">
             <span className="fb-user-name">{userName}</span>
-            <button className="fb-signout-btn" onClick={handleSignOut}>
-              Déconnexion
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <a href="/settings" className="fb-signout-btn" style={{ textDecoration: "none", textAlign: "center" }}>
+                Settings
+              </a>
+              <button className="fb-signout-btn" onClick={handleSignOut}>
+                Déconnexion
+              </button>
+            </div>
           </div>
         </div>
       </aside>

@@ -1,8 +1,10 @@
 import { betterAuth } from "better-auth";
 import Database from "better-sqlite3";
 
+export const db = new Database(process.env.DATABASE_URL ?? "./openfiler.db");
+
 export const auth = betterAuth({
-  database: new Database(process.env.DATABASE_URL ?? "./openfiler.db"),
+  database: db,
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,

@@ -69,9 +69,17 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### First Use
 
-1. Go to `/signup` to create your first account
-2. You will be redirected to the dashboard (file browser)
+A default admin account is created automatically on first launch:
+
+| Email | Password |
+|-------|----------|
+| `admin@openfiler.local` | `admin1234` |
+
+1. Open [http://localhost:3000](http://localhost:3000) — you will be redirected to the login page
+2. Sign in with the default credentials above
 3. Upload, preview, download, and manage your files
+
+> If you delete the database (`openfiler.db`), run the migration again and restart — the default user will be recreated automatically.
 
 ### Build for Production
 
@@ -85,40 +93,41 @@ npm start
 ```
 /
 ├── app/
-│   ├── layout.tsx                  # Root layout
-│   ├── page.tsx                    # Home / landing page
-│   ├── login/                     # Login page
-│   ├── signup/                    # Sign up page
-│   ├── dashboard/                 # File browser (protected)
+│   ├── layout.tsx                    # Root layout
+│   ├── page.tsx                      # File browser (protected, redirects to /login)
+│   ├── login/
+│   │   ├── page.tsx                  # Login page (redirects to / if authenticated)
+│   │   └── login-form.tsx            # Login form (client component)
+│   ├── dashboard/
+│   │   └── file-browser.tsx          # File browser UI (client component)
 │   └── api/
-│       ├── auth/[...all]/         # Better Auth catch-all
-│       ├── upload/                # POST  - file upload
-│       ├── files/                 # GET   - list files
-│       │   ├── route.ts           # DELETE - delete file
-│       │   ├── [folder]/[name]/   # GET   - file info
-│       │   └── visibility/        # PATCH - toggle private/public
-│       ├── preview/[folder]/[name]/ # GET - serve/preview file
-│       ├── download/[folder]/[name]/ # GET - download file
-│       ├── stats/                 # GET   - storage statistics
-│       ├── health/                # GET   - health check
-│       └── config/allowed-types/  # GET   - allowed MIME types
-├── components/
-│   ├── file-browser.tsx           # Main file browser UI
-│   └── sign-out-button.tsx        # Sign out button
+│       ├── auth/[...all]/            # Better Auth catch-all
+│       ├── upload/                   # POST  - file upload
+│       ├── files/                    # GET/DELETE - list/delete files
+│       │   ├── [folder]/[name]/      # GET   - file info
+│       │   └── visibility/           # PATCH - toggle private/public
+│       ├── preview/[folder]/[name]/  # GET   - serve/preview file
+│       ├── download/[folder]/[name]/ # GET   - download file
+│       ├── stats/                    # GET   - storage statistics
+│       ├── health/                   # GET   - health check
+│       └── config/allowed-types/     # GET   - allowed MIME types
 ├── lib/
 │   ├── auth/
-│   │   ├── server.ts              # Better Auth server instance
-│   │   ├── client.ts              # Better Auth client helpers
-│   │   └── require-session.ts     # Session guard for API routes
-│   ├── metadata.ts                # File privacy metadata (JSON store)
-│   ├── mime.ts                    # MIME type lookup
-│   ├── slug.ts                    # Filename slugification
-│   ├── upload-config.ts           # Allowed types, size limits
-│   └── ensure-dirs.ts             # Upload directory bootstrap
-├── .env.example                   # Environment variables template
-├── next.config.js                 # Next.js configuration
-├── postcss.config.mjs             # PostCSS / Tailwind config
-└── tsconfig.json                  # TypeScript configuration
+│   │   ├── server.ts                 # Better Auth server instance
+│   │   ├── client.ts                 # Better Auth client helpers
+│   │   └── require-session.ts        # Session guard for API routes
+│   ├── seed.ts                       # Default user seeding
+│   ├── metadata.ts                   # File privacy metadata (JSON store)
+│   ├── mime.ts                       # MIME type lookup
+│   ├── slug.ts                       # Filename slugification
+│   ├── upload-config.ts              # Allowed types, size limits
+│   └── ensure-dirs.ts                # Upload directory bootstrap
+├── middleware.ts                      # Blocks /signup, route protection
+├── instrumentation.ts                # Seeds default user on startup
+├── .env.example                      # Environment variables template
+├── next.config.js                    # Next.js configuration
+├── postcss.config.mjs                # PostCSS / Tailwind config
+└── tsconfig.json                     # TypeScript configuration
 ```
 
 ## API Routes
@@ -152,12 +161,11 @@ npm start
 
 OpenFiler uses [Better Auth](https://www.better-auth.com/) for authentication:
 
-- Email/password sign-up and sign-in
+- Default admin account created automatically on first launch
+- Email/password sign-in (sign-up is disabled by default)
 - Session management (7-day expiry, daily refresh)
 - Server-side session validation for protected routes
-- Extensible provider system (add OAuth, magic links, etc.)
-
-No credentials are hardcoded — all sensitive values are loaded from environment variables.
+- Authenticated users are redirected from `/login` to `/` automatically
 
 ## Supported File Types
 
