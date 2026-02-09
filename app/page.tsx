@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
@@ -7,20 +5,14 @@ export default function HomePage() {
       <nav className="border-b border-border bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="mx-auto max-w-6xl flex items-center justify-between px-6 py-4">
           <span className="text-lg font-bold tracking-tight">OpenFiler</span>
-          <div className="flex gap-3">
-            <Link
-              href="/login"
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-accent"
-            >
-              Connexion
-            </Link>
-            <Link
-              href="/signup"
-              className="rounded-lg bg-[#4f8ff7] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#3a7be0]"
-            >
-              Créer un compte
-            </Link>
-          </div>
+          <a
+            href="https://github.com/williamloree/OpenFiler"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            GitHub
+          </a>
         </div>
       </nav>
 
@@ -38,22 +30,14 @@ export default function HomePage() {
           Uploadez, organisez, prévisualisez et partagez vos images, vidéos et
           documents depuis une interface moderne et sécurisée.
         </p>
-        <div className="flex gap-4 justify-center">
-          <Link
-            href="/signup"
-            className="rounded-lg bg-[#4f8ff7] px-8 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#3a7be0] shadow-lg shadow-[#4f8ff7]/25"
-          >
-            Commencer gratuitement
-          </Link>
-          <a
-            href="https://github.com/williamloree/OpenFiler"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-lg border border-border px-8 py-3.5 text-sm font-semibold transition-colors hover:bg-accent"
-          >
-            Voir sur GitHub
-          </a>
-        </div>
+        <a
+          href="https://github.com/williamloree/OpenFiler"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block rounded-lg bg-[#4f8ff7] px-8 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#3a7be0] shadow-lg shadow-[#4f8ff7]/25"
+        >
+          Déployer sur votre serveur
+        </a>
       </section>
 
       {/* FEATURES */}
@@ -160,20 +144,14 @@ export default function HomePage() {
             Déployez OpenFiler sur votre serveur en quelques minutes.
             Open-source, gratuit, sans limites artificielles.
           </p>
-          <div className="flex gap-4 justify-center">
-            <Link
-              href="/signup"
-              className="rounded-lg bg-[#4f8ff7] px-8 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#3a7be0]"
-            >
-              Créer un compte
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-lg border border-white/20 px-8 py-3.5 text-sm font-semibold transition-colors hover:bg-white/10"
-            >
-              Se connecter
-            </Link>
-          </div>
+          <a
+            href="https://github.com/williamloree/OpenFiler"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block rounded-lg bg-[#4f8ff7] px-8 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#3a7be0]"
+          >
+            Voir sur GitHub
+          </a>
         </div>
       </section>
 

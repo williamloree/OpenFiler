@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/server";
-import { FileBrowser } from "@/components/file-browser";
+import { FileBrowser } from "./file-browser";
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession({

@@ -1,0 +1,575 @@
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import { authClient } from "@/lib/auth/client";
+
+interface FileInfo {
+  name: string;
+  folder: string;
+  size: number;
+  created: string;
+  modified: string;
+  url: string;
+  isPrivate: boolean;
+}
+
+interface Stats {
+  totalFiles: number;
+  totalSize: number;
+  folders: Record<string, { count: number; size: number }>;
+}
+
+type SortField = "name" | "folder" | "size" | "modified";
+type SortDir = "asc" | "desc";
+
+const FOLDER_NAMES: Record<string, string> = {
+  all: "Tous les fichiers",
+  image: "Images",
+  video: "Videos",
+  document: "Documents",
+};
+
+function formatSize(bytes: number): string {
+  if (!bytes || bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+function formatDate(dateStr: string): string {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function getFolderIcon(folder: string): string {
+  const icons: Record<string, string> = { image: "\u{1F5BC}", video: "\u{1F3AC}", document: "\u{1F4C4}" };
+  return icons[folder] || "\u{1F4C4}";
+}
+
+export function FileBrowser({ userName }: { userName: string }) {
+  const [allFiles, setAllFiles] = useState<FileInfo[]>([]);
+  const [stats, setStats] = useState<Stats>({ totalFiles: 0, totalSize: 0, folders: {} });
+  const [currentFolder, setCurrentFolder] = useState("all");
+  const [search, setSearch] = useState("");
+  const [sortField, setSortField] = useState<SortField>("modified");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [toasts, setToasts] = useState<Array<{ id: number; message: string; type: string }>>([]);
+
+  const [previewFile, setPreviewFile] = useState<FileInfo | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [dragOver, setDragOver] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const toastIdRef = useRef(0);
+
+  const showToast = useCallback((message: string, type = "info") => {
+    const id = ++toastIdRef.current;
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  }, []);
+
+  const refreshFiles = useCallback(async () => {
+    try {
+      const [filesRes, statsRes] = await Promise.all([fetch("/api/files"), fetch("/api/stats")]);
+      const filesData = await filesRes.json();
+      const statsData = await statsRes.json();
+      setAllFiles(filesData.files || []);
+      setStats(statsData);
+    } catch {
+      showToast("Erreur de chargement", "error");
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    refreshFiles();
+  }, [refreshFiles]);
+
+  // Filter & sort
+  let displayedFiles = allFiles;
+  if (currentFolder !== "all") {
+    displayedFiles = displayedFiles.filter((f) => f.folder === currentFolder);
+  }
+  if (search) {
+    displayedFiles = displayedFiles.filter((f) => f.name.toLowerCase().includes(search.toLowerCase()));
+  }
+  displayedFiles = [...displayedFiles].sort((a, b) => {
+    let va: string | number = a[sortField] as string;
+    let vb: string | number = b[sortField] as string;
+    if (sortField === "modified") {
+      va = new Date(va).getTime();
+      vb = new Date(vb).getTime();
+    }
+    if (sortField === "size") {
+      va = Number(va);
+      vb = Number(vb);
+    }
+    if (typeof va === "string") {
+      va = va.toLowerCase();
+      vb = (vb as string).toLowerCase();
+    }
+    if (va < vb) return sortDir === "asc" ? -1 : 1;
+    if (va > vb) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  function handleSort(field: SortField) {
+    if (sortField === field) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+  }
+
+  function selectFolder(folder: string) {
+    setCurrentFolder(folder);
+    setSelectedFiles(new Set());
+  }
+
+  function toggleSelect(filename: string) {
+    setSelectedFiles((prev) => {
+      const next = new Set(prev);
+      if (next.has(filename)) next.delete(filename);
+      else next.add(filename);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedFiles.size === displayedFiles.length) {
+      setSelectedFiles(new Set());
+    } else {
+      setSelectedFiles(new Set(displayedFiles.map((f) => f.name)));
+    }
+  }
+
+  async function deleteSingleFile(file: FileInfo) {
+    if (!confirm(`Supprimer "${file.name}" ?`)) return;
+    const mimePrefix = file.folder === "image" ? "image/" : file.folder === "video" ? "video/" : "application/";
+    try {
+      const res = await fetch("/api/files", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, type: mimePrefix + "generic" }),
+      });
+      if (res.ok) {
+        showToast("Fichier supprimé", "success");
+        refreshFiles();
+      } else {
+        const data = await res.json();
+        showToast(data.message, "error");
+      }
+    } catch {
+      showToast("Erreur de connexion", "error");
+    }
+  }
+
+  async function batchDelete() {
+    if (!confirm(`Supprimer ${selectedFiles.size} fichier(s) ?`)) return;
+    const toDelete = allFiles.filter((f) => selectedFiles.has(f.name));
+    let deleted = 0;
+    for (const file of toDelete) {
+      const mimePrefix = file.folder === "image" ? "image/" : file.folder === "video" ? "video/" : "application/";
+      try {
+        const res = await fetch("/api/files", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: file.name, type: mimePrefix + "generic" }),
+        });
+        if (res.ok) deleted++;
+      } catch {
+        /* continue */
+      }
+    }
+    showToast(`${deleted} fichier(s) supprimé(s)`, "success");
+    setSelectedFiles(new Set());
+    refreshFiles();
+  }
+
+  async function toggleVisibility(folder: string, name: string, isPrivate: boolean) {
+    try {
+      const res = await fetch("/api/files/visibility", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder, name, isPrivate }),
+      });
+      if (res.ok) {
+        setAllFiles((prev) =>
+          prev.map((f) => (f.name === name && f.folder === folder ? { ...f, isPrivate } : f))
+        );
+        showToast(isPrivate ? "Fichier passé en privé" : "Fichier passé en public", "success");
+      } else {
+        const data = await res.json();
+        showToast(data.message || "Erreur", "error");
+        refreshFiles();
+      }
+    } catch {
+      showToast("Erreur de connexion", "error");
+      refreshFiles();
+    }
+  }
+
+  async function handleUpload(fileList: FileList) {
+    const formData = new FormData();
+    const imageExts = ["jpg", "jpeg", "png", "svg", "webp", "bmp", "ico"];
+    const videoExts = ["mp4", "avi", "mov", "wmv", "flv", "webm", "mkv"];
+    const docExts = ["pdf", "docx"];
+
+    for (const file of Array.from(fileList)) {
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+      let field: string;
+      if (imageExts.includes(ext)) field = "image";
+      else if (videoExts.includes(ext)) field = "video";
+      else if (docExts.includes(ext)) field = "document";
+      else {
+        showToast(`Type non supporté: ${file.name}`, "error");
+        continue;
+      }
+      formData.append(field, file);
+    }
+
+    setUploading(true);
+    setUploadStatus("Upload en cours...");
+    setUploadProgress(30);
+
+    try {
+      setUploadProgress(60);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      setUploadProgress(100);
+
+      if (res.ok) {
+        setUploadStatus(data.message);
+        showToast(data.message, "success");
+        setTimeout(() => {
+          setUploadOpen(false);
+          setUploading(false);
+          setUploadProgress(0);
+          refreshFiles();
+        }, 1000);
+      } else {
+        setUploadStatus("Erreur: " + data.message);
+        showToast(data.message, "error");
+      }
+    } catch {
+      setUploadStatus("Erreur de connexion");
+      showToast("Erreur de connexion", "error");
+    }
+  }
+
+  async function handleSignOut() {
+    await authClient.signOut();
+    window.location.href = "/login";
+  }
+
+  const storagePct = Math.min((stats.totalSize / (1024 * 1024 * 1024)) * 100, 100);
+
+  return (
+    <div className="fb-root">
+      {/* SIDEBAR */}
+      <aside className="fb-sidebar">
+        <div className="fb-sidebar-header">
+          <h1>OpenFiler</h1>
+          <span>File Browser</span>
+        </div>
+        <nav className="fb-sidebar-nav">
+          <div className="fb-sidebar-label">Buckets</div>
+          {(["all", "image", "video", "document"] as const).map((folder) => (
+            <div
+              key={folder}
+              className={`fb-nav-item ${currentFolder === folder ? "active" : ""}`}
+              onClick={() => selectFolder(folder)}
+            >
+              <span className="fb-nav-icon">
+                {folder === "all" ? "\u{1F4C1}" : folder === "image" ? "\u{1F4F7}" : folder === "video" ? "\u{1F3A5}" : "\u{1F4C4}"}
+              </span>
+              <span className="fb-nav-text">{FOLDER_NAMES[folder]}</span>
+              <span className="fb-nav-badge">
+                {folder === "all" ? stats.totalFiles : stats.folders[folder]?.count ?? 0}
+              </span>
+            </div>
+          ))}
+        </nav>
+        <div className="fb-sidebar-stats">
+          <div className="fb-stat-row">
+            <span className="fb-stat-label">Fichiers</span>
+            <span className="fb-stat-value">{stats.totalFiles}</span>
+          </div>
+          <div className="fb-stat-row">
+            <span className="fb-stat-label">Taille totale</span>
+            <span className="fb-stat-value">{formatSize(stats.totalSize)}</span>
+          </div>
+          <div className="fb-storage-bar">
+            <div className="fb-storage-fill" style={{ width: `${storagePct}%` }} />
+          </div>
+          <div className="fb-sidebar-user">
+            <span className="fb-user-name">{userName}</span>
+            <button className="fb-signout-btn" onClick={handleSignOut}>
+              Déconnexion
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* MAIN */}
+      <main className="fb-main">
+        {/* TOOLBAR */}
+        <div className="fb-toolbar">
+          <div className="fb-breadcrumb">
+            <a onClick={() => selectFolder("all")}>OpenFiler</a>
+            <span className="fb-sep">/</span>
+            <span>{FOLDER_NAMES[currentFolder]}</span>
+          </div>
+          <div className="fb-toolbar-actions">
+            <div className="fb-search-box">
+              <input
+                type="text"
+                placeholder="Rechercher un fichier..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <button className="fb-btn fb-btn-outline" onClick={() => refreshFiles()}>
+              &#8635; Rafraîchir
+            </button>
+            <button className="fb-btn fb-btn-primary" onClick={() => { setUploadOpen(true); setUploading(false); }}>
+              &#8679; Upload
+            </button>
+          </div>
+        </div>
+
+        {/* BATCH BAR */}
+        {selectedFiles.size > 0 && (
+          <div className="fb-batch-bar">
+            <span>
+              <strong>{selectedFiles.size}</strong> fichier(s) sélectionné(s)
+            </span>
+            <button className="fb-btn fb-btn-sm" onClick={batchDelete}>
+              Supprimer la sélection
+            </button>
+            <button className="fb-btn fb-btn-sm" onClick={() => setSelectedFiles(new Set())}>
+              Annuler
+            </button>
+          </div>
+        )}
+
+        {/* TABLE */}
+        {displayedFiles.length > 0 ? (
+          <div className="fb-table-container">
+            <table className="fb-table">
+              <thead>
+                <tr>
+                  <th className="fb-td-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedFiles.size === displayedFiles.length && displayedFiles.length > 0}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
+                  <th onClick={() => handleSort("name")}>
+                    Nom <span className="fb-sort-icon">{sortField === "name" ? (sortDir === "asc" ? "\u25B2" : "\u25BC") : "\u25B2\u25BC"}</span>
+                  </th>
+                  <th onClick={() => handleSort("folder")}>
+                    Type <span className="fb-sort-icon">{sortField === "folder" ? (sortDir === "asc" ? "\u25B2" : "\u25BC") : "\u25B2\u25BC"}</span>
+                  </th>
+                  <th onClick={() => handleSort("size")}>
+                    Taille <span className="fb-sort-icon">{sortField === "size" ? (sortDir === "asc" ? "\u25B2" : "\u25BC") : "\u25B2\u25BC"}</span>
+                  </th>
+                  <th onClick={() => handleSort("modified")}>
+                    Modifié <span className="fb-sort-icon">{sortField === "modified" ? (sortDir === "asc" ? "\u25B2" : "\u25BC") : "\u25B2\u25BC"}</span>
+                  </th>
+                  <th>Visibilité</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedFiles.map((file) => (
+                  <tr key={`${file.folder}/${file.name}`}>
+                    <td className="fb-td-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selectedFiles.has(file.name)}
+                        onChange={() => toggleSelect(file.name)}
+                      />
+                    </td>
+                    <td>
+                      <div className="fb-file-name-cell">
+                        <div className={`fb-file-icon ${file.folder}`}>{getFolderIcon(file.folder)}</div>
+                        <div className="fb-file-name" title={file.name}>{file.name}</div>
+                      </div>
+                    </td>
+                    <td><span className="fb-file-folder">{file.folder}</span></td>
+                    <td>{formatSize(file.size)}</td>
+                    <td>{formatDate(file.modified)}</td>
+                    <td>
+                      <label className="fb-visibility-label">
+                        <input
+                          type="checkbox"
+                          checked={file.isPrivate}
+                          onChange={(e) => toggleVisibility(file.folder, file.name, e.target.checked)}
+                        />
+                        <span style={{ color: file.isPrivate ? "var(--fb-danger)" : "var(--fb-text-secondary)" }}>
+                          {file.isPrivate ? "\u{1F512} Privé" : "\u{1F513} Public"}
+                        </span>
+                      </label>
+                    </td>
+                    <td>
+                      <div className="fb-file-actions">
+                        <button className="fb-action-btn" onClick={() => setPreviewFile(file)} title="Aperçu">
+                          &#128065;&#65039;
+                        </button>
+                        <button
+                          className="fb-action-btn"
+                          onClick={() => window.open(`/api/download/${file.folder}/${encodeURIComponent(file.name)}`, "_blank")}
+                          title="Télécharger"
+                        >
+                          &#128229;
+                        </button>
+                        <button className="fb-action-btn delete" onClick={() => deleteSingleFile(file)} title="Supprimer">
+                          &#128465;&#65039;
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="fb-empty-state">
+            <div className="fb-empty-icon">&#128194;</div>
+            <h3>Aucun fichier</h3>
+            <p>Ce dossier est vide. Uploadez des fichiers pour commencer.</p>
+            <button className="fb-btn fb-btn-primary" style={{ marginTop: 16 }} onClick={() => { setUploadOpen(true); setUploading(false); }}>
+              &#8679; Upload
+            </button>
+          </div>
+        )}
+      </main>
+
+      {/* PREVIEW MODAL */}
+      {previewFile && (
+        <div className="fb-modal-overlay" onClick={() => setPreviewFile(null)}>
+          <div className="fb-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="fb-modal-header">
+              <div style={{ overflow: "hidden", flex: 1 }}>
+                <h3>{previewFile.name}</h3>
+                <div
+                  className="fb-preview-url"
+                  title="Cliquer pour copier l'URL"
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.origin + previewFile.url);
+                    showToast("URL copiée !", "success");
+                  }}
+                >
+                  {window.location.origin + previewFile.url}
+                </div>
+              </div>
+              <button className="fb-modal-close" onClick={() => setPreviewFile(null)}>
+                &times;
+              </button>
+            </div>
+            <div className="fb-modal-body">
+              {previewFile.folder === "image" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={previewFile.url} alt={previewFile.name} />
+              ) : previewFile.folder === "video" ? (
+                <video controls autoPlay>
+                  <source src={previewFile.url} />
+                </video>
+              ) : previewFile.name.toLowerCase().endsWith(".pdf") ? (
+                <iframe src={previewFile.url} title={previewFile.name} />
+              ) : (
+                <div className="fb-file-detail">
+                  <div className="fb-detail-icon">{getFolderIcon(previewFile.folder)}</div>
+                  <h3>{previewFile.name}</h3>
+                  <p>Taille: {formatSize(previewFile.size)}</p>
+                  <p>Modifié: {formatDate(previewFile.modified)}</p>
+                  <p>Type: {previewFile.folder}</p>
+                </div>
+              )}
+            </div>
+            <div className="fb-modal-footer">
+              <button className="fb-btn fb-btn-outline" onClick={() => setPreviewFile(null)}>
+                Fermer
+              </button>
+              <a
+                className="fb-btn fb-btn-primary"
+                href={`/api/download/${previewFile.folder}/${encodeURIComponent(previewFile.name)}`}
+                style={{ textDecoration: "none" }}
+              >
+                &#128229; Télécharger
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UPLOAD MODAL */}
+      {uploadOpen && (
+        <div className="fb-modal-overlay" onClick={() => !uploading && setUploadOpen(false)}>
+          <div className="fb-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="fb-modal-header">
+              <h3>Upload de fichiers</h3>
+              <button className="fb-modal-close" onClick={() => !uploading && setUploadOpen(false)}>
+                &times;
+              </button>
+            </div>
+            <div className="fb-modal-body" style={{ flexDirection: "column", minWidth: "auto" }}>
+              {!uploading ? (
+                <div
+                  className={`fb-upload-zone ${dragOver ? "dragover" : ""}`}
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOver(false);
+                    if (e.dataTransfer.files.length > 0) handleUpload(e.dataTransfer.files);
+                  }}
+                >
+                  <div className="fb-upload-icon">&#128228;</div>
+                  <p><strong>Glissez vos fichiers ici</strong></p>
+                  <p>ou cliquez pour sélectionner</p>
+                  <p className="fb-upload-hint">Images (6 max) | Videos (2 max) | Documents (3 max) - 64 MB max</p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) handleUpload(e.target.files);
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="fb-upload-progress">
+                  <div className="fb-upload-status">{uploadStatus}</div>
+                  <div className="fb-progress-bar">
+                    <div className="fb-progress-fill" style={{ width: `${uploadProgress}%` }} />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TOASTS */}
+      <div className="fb-toast-container">
+        {toasts.map((toast) => (
+          <div key={toast.id} className={`fb-toast ${toast.type}`}>
+            {toast.message}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
