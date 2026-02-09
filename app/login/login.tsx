@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { authClient } from "@/lib/auth/client";
 
-export function LoginForm() {
+export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
