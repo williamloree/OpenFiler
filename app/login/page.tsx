@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { authClient } from "@/lib/auth/client";
 
 export default function LoginPage() {
@@ -20,7 +19,7 @@ export default function LoginPage() {
       if (result.error) {
         setError(result.error.message ?? "Sign in failed");
       } else {
-        window.location.href = "/dashboard";
+        window.location.href = "/";
       }
     } catch {
       setError("An unexpected error occurred");
@@ -62,10 +61,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium mb-1"
-            >
+            <label htmlFor="password" className="block text-sm font-medium mb-1">
               Password
             </label>
             <input
@@ -87,22 +83,6 @@ export default function LoginPage() {
             {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
-
-        <p className="mt-6 text-center text-sm text-secondary">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-primary hover:underline">
-            Sign up
-          </Link>
-        </p>
-
-        <div className="mt-4 text-center">
-          <Link
-            href="/"
-            className="text-sm text-secondary hover:text-foreground"
-          >
-            &larr; Back to home
-          </Link>
-        </div>
       </div>
     </div>
   );
