@@ -1,20 +1,6 @@
-import { FileInfo, formatSize, formatDate, getFolderIcon } from "@/app/dashboard/file-browser";
-
-interface ItemProps {
-  file: FileInfo;
-  selected: boolean;
-  isRenaming: boolean;
-  renameValue: string;
-  onSelect: () => void;
-  onToggleVisibility: (isPrivate: boolean) => void;
-  onPreview: () => void;
-  onStartRename: () => void;
-  onRenameChange: (value: string) => void;
-  onRenameConfirm: () => void;
-  onRenameCancel: () => void;
-  onDownload: () => void;
-  onDelete: () => void;
-}
+import type { ItemProps } from "@/types";
+import { formatSize, formatDate, getFolderIcon } from "@/app/dashboard/file-browser";
+import { Button } from "./ui/Button";
 
 export function Item({
   file,
@@ -73,24 +59,24 @@ export function Item({
             onChange={(e) => onToggleVisibility(e.target.checked)}
           />
           <span style={{ color: file.isPrivate ? "var(--fb-danger)" : "var(--fb-text-secondary)" }}>
-            {file.isPrivate ? "\u{1F512} Privé" : "\u{1F513} Public"}
+            {file.isPrivate ? "🔒 Privé" : "🔓 Public"}
           </span>
         </label>
       </td>
       <td>
         <div className="fb-file-actions">
-          <button className="fb-action-btn" onClick={onPreview} title="Aperçu">
-            &#128065;&#65039;
-          </button>
-          <button className="fb-action-btn" onClick={onStartRename} title="Renommer">
-            &#9998;&#65039;
-          </button>
-          <button className="fb-action-btn" onClick={onDownload} title="Télécharger">
-            &#128229;
-          </button>
-          <button className="fb-action-btn delete" onClick={onDelete} title="Supprimer">
-            &#128465;&#65039;
-          </button>
+          <Button variant="ghost" onClick={onPreview} title="Aperçu">
+            👁️
+          </Button>
+          <Button variant="ghost" onClick={onStartRename} title="Renommer">
+            📝
+          </Button>
+          <Button variant="ghost" onClick={onDownload} title="Télécharger">
+            📥
+          </Button>
+          <Button variant="danger" onClick={onDelete} title="Supprimer">
+            🗑️
+          </Button>
         </div>
       </td>
     </tr>

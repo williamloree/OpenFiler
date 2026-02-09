@@ -1,25 +1,5 @@
-import { FileInfo, SortField, SortDir } from "@/app/dashboard/file-browser";
+import type { SortField, SortDir, TableProps } from "@/types";
 import { Item } from "./Item";
-
-interface TableProps {
-  files: FileInfo[];
-  selectedFiles: Set<string>;
-  sortField: SortField;
-  sortDir: SortDir;
-  renamingFile: FileInfo | null;
-  renameValue: string;
-  onSort: (field: SortField) => void;
-  onToggleSelectAll: () => void;
-  onSelect: (filename: string) => void;
-  onToggleVisibility: (folder: string, name: string, isPrivate: boolean) => void;
-  onPreview: (file: FileInfo) => void;
-  onStartRename: (file: FileInfo) => void;
-  onRenameChange: (value: string) => void;
-  onRenameConfirm: (file: FileInfo) => void;
-  onRenameCancel: () => void;
-  onDownload: (file: FileInfo) => void;
-  onDelete: (file: FileInfo) => void;
-}
 
 function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: SortField; sortDir: SortDir }) {
   if (sortField === field) {
