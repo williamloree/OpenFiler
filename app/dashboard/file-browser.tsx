@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { authClient } from "@/lib/auth/client";
+import { Table } from "@/components/Table";
 
-interface FileInfo {
+export interface FileInfo {
   name: string;
   folder: string;
   size: number;
@@ -19,8 +20,8 @@ interface Stats {
   folders: Record<string, { count: number; size: number }>;
 }
 
-type SortField = "name" | "folder" | "size" | "modified";
-type SortDir = "asc" | "desc";
+export type SortField = "name" | "folder" | "size" | "modified";
+export type SortDir = "asc" | "desc";
 
 const FOLDER_NAMES: Record<string, string> = {
   all: "Tous les fichiers",
@@ -29,7 +30,7 @@ const FOLDER_NAMES: Record<string, string> = {
   document: "Documents",
 };
 
-function formatSize(bytes: number): string {
+export function formatSize(bytes: number): string {
   if (!bytes || bytes === 0) return "0 B";
   const k = 1024;
   const sizes = ["B", "KB", "MB", "GB", "TB"];
@@ -37,14 +38,14 @@ function formatSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
-function formatDate(dateStr: string): string {
+export function formatDate(dateStr: string): string {
   if (!dateStr) return "-";
   const d = new Date(dateStr);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function getFolderIcon(folder: string): string {
+export function getFolderIcon(folder: string): string {
   const icons: Record<string, string> = { image: "\u{1F5BC}", video: "\u{1F3AC}", document: "\u{1F4C4}" };
   return icons[folder] || "\u{1F4C4}";
 }
@@ -442,107 +443,25 @@ export function FileBrowser({ userName, userEmail }: { userName: string; userEma
         {/* TABLE */}
         {displayedFiles.length > 0 ? (
           <div className="fb-table-container">
-            <table className="fb-table">
-              <thead>
-                <tr>
-                  <th className="fb-td-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={selectedFiles.size === displayedFiles.length && displayedFiles.length > 0}
-                      onChange={toggleSelectAll}
-                    />
-                  </th>
-                  <th onClick={() => handleSort("name")}>
-                    Nom <span className="fb-sort-icon">{sortField === "name" ? (sortDir === "asc" ? "\u25B2" : "\u25BC") : "\u25B2\u25BC"}</span>
-                  </th>
-                  <th onClick={() => handleSort("folder")}>
-                    Type <span className="fb-sort-icon">{sortField === "folder" ? (sortDir === "asc" ? "\u25B2" : "\u25BC") : "\u25B2\u25BC"}</span>
-                  </th>
-                  <th onClick={() => handleSort("size")}>
-                    Taille <span className="fb-sort-icon">{sortField === "size" ? (sortDir === "asc" ? "\u25B2" : "\u25BC") : "\u25B2\u25BC"}</span>
-                  </th>
-                  <th onClick={() => handleSort("modified")}>
-                    Modifié <span className="fb-sort-icon">{sortField === "modified" ? (sortDir === "asc" ? "\u25B2" : "\u25BC") : "\u25B2\u25BC"}</span>
-                  </th>
-                  <th>Visibilité</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayedFiles.map((file) => (
-                  <tr key={`${file.folder}/${file.name}`}>
-                    <td className="fb-td-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={selectedFiles.has(file.name)}
-                        onChange={() => toggleSelect(file.name)}
-                      />
-                    </td>
-                    <td>
-                      <div className="fb-file-name-cell">
-                        <div className={`fb-file-icon ${file.folder}`}>{getFolderIcon(file.folder)}</div>
-                        {renamingFile?.name === file.name && renamingFile?.folder === file.folder ? (
-                          <input
-                            autoFocus
-                            type="text"
-                            value={renameValue}
-                            onChange={(e) => setRenameValue(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") handleRename(file);
-                              if (e.key === "Escape") setRenamingFile(null);
-                            }}
-                            onBlur={() => handleRename(file)}
-                            className="fb-file-name"
-                            style={{ border: "1px solid var(--fb-primary)", borderRadius: 4, padding: "2px 6px", outline: "none", width: "100%" }}
-                          />
-                        ) : (
-                          <div className="fb-file-name" title={file.name}>{file.name}</div>
-                        )}
-                      </div>
-                    </td>
-                    <td><span className="fb-file-folder">{file.folder}</span></td>
-                    <td>{formatSize(file.size)}</td>
-                    <td>{formatDate(file.modified)}</td>
-                    <td>
-                      <label className="fb-visibility-label">
-                        <input
-                          type="checkbox"
-                          checked={file.isPrivate}
-                          onChange={(e) => toggleVisibility(file.folder, file.name, e.target.checked)}
-                        />
-                        <span style={{ color: file.isPrivate ? "var(--fb-danger)" : "var(--fb-text-secondary)" }}>
-                          {file.isPrivate ? "\u{1F512} Privé" : "\u{1F513} Public"}
-                        </span>
-                      </label>
-                    </td>
-                    <td>
-                      <div className="fb-file-actions">
-                        <button className="fb-action-btn" onClick={() => setPreviewFile(file)} title="Aperçu">
-                          &#128065;&#65039;
-                        </button>
-                        <button
-                          className="fb-action-btn"
-                          onClick={() => { setRenamingFile(file); setRenameValue(file.name); }}
-                          title="Renommer"
-                        >
-                          &#9998;&#65039;
-                        </button>
-                        <button
-                          className="fb-action-btn"
-                          onClick={() => window.open(`/api/download/${file.folder}/${encodeURIComponent(file.name)}`, "_blank")}
-                          title="Télécharger"
-                        >
-                          &#128229;
-                        </button>
-                        <button className="fb-action-btn delete" onClick={() => deleteSingleFile(file)} title="Supprimer">
-                          &#128465;&#65039;
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <Table
+              files={displayedFiles}
+              selectedFiles={selectedFiles}
+              sortField={sortField}
+              sortDir={sortDir}
+              renamingFile={renamingFile}
+              renameValue={renameValue}
+              onSort={handleSort}
+              onToggleSelectAll={toggleSelectAll}
+              onSelect={toggleSelect}
+              onToggleVisibility={toggleVisibility}
+              onPreview={setPreviewFile}
+              onStartRename={(file) => { setRenamingFile(file); setRenameValue(file.name); }}
+              onRenameChange={setRenameValue}
+              onRenameConfirm={handleRename}
+              onRenameCancel={() => setRenamingFile(null)}
+              onDownload={(file) => window.open(`/api/download/${file.folder}/${encodeURIComponent(file.name)}`, "_blank")}
+              onDelete={deleteSingleFile}
+            />
           </div>
         ) : (
           <div className="fb-empty-state">
