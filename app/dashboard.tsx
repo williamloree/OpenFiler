@@ -4,16 +4,16 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { authClient } from "@/lib/auth/client";
 import type { FileInfo, Stats, SortField, SortDir, TrashItem } from "@/types";
 import { Table } from "@/components/Table";
-import { Sidebar } from "../../components/Sidebar";
-import { Toolbar } from "../../components/Toolbar";
-import { BatchBar } from "../../components/BatchBar";
-import { Pagination } from "../../components/Pagination";
-import { Toasts } from "../../components/Toasts";
-import { Button } from "../../components/ui/Button";
-import { PreviewModal } from "../../components/modal/PreviewModal";
-import { UploadModal } from "../../components/modal/UploadModal";
-import { SettingsModal } from "../../components/modal/SettingsModal";
-import { ShareModal } from "../../components/modal/ShareModal";
+import { Sidebar } from "../components/Sidebar";
+import { Toolbar } from "../components/Toolbar";
+import { BatchBar } from "../components/BatchBar";
+import { Pagination } from "../components/Pagination";
+import { Toasts } from "../components/Toasts";
+import { Button } from "../components/ui/Button";
+import { PreviewModal } from "../components/modal/PreviewModal";
+import { UploadModal } from "../components/modal/UploadModal";
+import { SettingsModal } from "../components/modal/SettingsModal";
+import { ShareModal } from "../components/modal/ShareModal";
 
 export type { FileInfo, Stats, SortField, SortDir };
 
@@ -41,7 +41,7 @@ export function getFolderIcon(folder: string): string {
   return icons[folder] || "📁";
 }
 
-export function FileBrowser({
+export function Dashboard({
   userName,
   userEmail,
 }: {
@@ -459,7 +459,7 @@ export function FileBrowser({
   );
 
   return (
-    <div className="fb-root">
+    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-800">
       <Sidebar
         currentFolder={currentFolder}
         selectFolder={selectFolder}
@@ -472,14 +472,17 @@ export function FileBrowser({
       />
 
       {/* MAIN */}
-      <main className="fb-main">
+      <main className="flex flex-1 flex-col overflow-hidden">
         {currentFolder === "trash" ? (
           <>
-            <div className="fb-toolbar">
-              <div className="fb-toolbar-left">
-                <h2 style={{ margin: 0 }}>Corbeille</h2>
-                <span style={{ color: "var(--text-secondary)", fontSize: 14 }}>
-                  {trashItems.length} élément(s) — suppression auto après 30 jours
+            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Corbeille
+                </h2>
+                <span className="text-sm text-slate-400">
+                  {trashItems.length} élément(s) — suppression auto après 30
+                  jours
                 </span>
               </div>
               {trashItems.length > 0 && (
@@ -490,30 +493,58 @@ export function FileBrowser({
             </div>
 
             {trashItems.length > 0 ? (
-              <div className="fb-table-container">
-                <table className="fb-table">
+              <div className="flex-1 overflow-y-auto">
+                <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr>
-                      <th>Nom</th>
-                      <th>Dossier d&apos;origine</th>
-                      <th>Taille</th>
-                      <th>Supprimé le</th>
-                      <th>Actions</th>
+                      <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
+                        Nom
+                      </th>
+                      <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
+                        Dossier d&apos;origine
+                      </th>
+                      <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
+                        Taille
+                      </th>
+                      <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
+                        Supprimé le
+                      </th>
+                      <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {trashItems.map((item) => (
-                      <tr key={item.id}>
-                        <td>{item.filename}</td>
-                        <td>{getFolderIcon(item.originalFolder)} {item.originalFolder}</td>
-                        <td>{formatSize(item.size)}</td>
-                        <td>{formatDate(item.deletedAt)}</td>
-                        <td>
-                          <div style={{ display: "flex", gap: 4 }}>
-                            <Button variant="outline" onClick={() => restoreFromTrash(item)}>
+                      <tr
+                        key={item.id}
+                        className="border-b border-slate-100 transition-colors hover:bg-slate-50/70"
+                      >
+                        <td className="px-4 py-2.5 text-sm font-medium text-slate-800">
+                          {item.filename}
+                        </td>
+                        <td className="px-4 py-2.5 text-sm text-slate-500">
+                          {getFolderIcon(item.originalFolder)}{" "}
+                          {item.originalFolder}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-slate-500">
+                          {formatSize(item.size)}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-slate-500">
+                          {formatDate(item.deletedAt)}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex gap-1">
+                            <Button
+                              variant="outline"
+                              onClick={() => restoreFromTrash(item)}
+                            >
                               Restaurer
                             </Button>
-                            <Button variant="danger" onClick={() => deleteFromTrash(item)}>
+                            <Button
+                              variant="danger"
+                              onClick={() => deleteFromTrash(item)}
+                            >
                               Supprimer
                             </Button>
                           </div>
@@ -524,10 +555,14 @@ export function FileBrowser({
                 </table>
               </div>
             ) : (
-              <div className="fb-empty-state">
-                <div className="fb-empty-icon">🗑️</div>
-                <h3>Corbeille vide</h3>
-                <p>Les fichiers supprimés apparaîtront ici.</p>
+              <div className="flex flex-1 flex-col items-center justify-center px-5 py-20 text-center text-slate-400">
+                <div className="mb-4 text-5xl opacity-50">🗑️</div>
+                <h3 className="mb-2 text-base font-semibold text-slate-800">
+                  Corbeille vide
+                </h3>
+                <p className="text-sm">
+                  Les fichiers supprimés apparaîtront ici.
+                </p>
               </div>
             )}
           </>
@@ -554,7 +589,7 @@ export function FileBrowser({
 
             {/* TABLE */}
             {displayedFiles.length > 0 ? (
-              <div className="fb-table-container">
+              <div className="flex-1 overflow-y-auto">
                 <Table
                   files={displayedFiles}
                   selectedFiles={selectedFiles}
@@ -585,19 +620,37 @@ export function FileBrowser({
                 />
               </div>
             ) : (
-              <div className="fb-empty-state">
-                <div className="fb-empty-icon">📂</div>
-                <h3>Aucun fichier</h3>
-                <p>Ce dossier est vide. Uploadez des fichiers pour commencer.</p>
+              <div className="flex flex-1 flex-col items-center justify-center px-5 py-20 text-center text-slate-400">
+                <div className="mb-4 text-5xl opacity-50">📂</div>
+                <h3 className="mb-2 text-base font-semibold text-slate-800">
+                  Aucun fichier
+                </h3>
+                <p className="text-sm">
+                  Ce dossier est vide. Uploadez des fichiers pour commencer.
+                </p>
                 <Button
                   variant="primary"
-                  style={{ marginTop: 16 }}
+                  className="mt-4"
                   onClick={() => {
                     setUploadOpen(true);
                     setUploading(false);
                   }}
                 >
-                  📥 Upload
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  Upload
                 </Button>
               </div>
             )}
@@ -644,14 +697,10 @@ export function FileBrowser({
       )}
 
       {shareFile && (
-        <ShareModal
-          file={shareFile}
-          onClose={() => setShareFile(null)}
-        />
+        <ShareModal file={shareFile} onClose={() => setShareFile(null)} />
       )}
 
       <Toasts toasts={toasts} />
     </div>
   );
 }
-

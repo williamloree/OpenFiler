@@ -7,7 +7,7 @@ export function Pagination({ totalFiles, pageLimit, page, onPageChange }: Pagina
   const totalPages = Math.ceil(totalFiles / pageLimit);
 
   return (
-    <div className="fb-batch-bar" style={{ justifyContent: "center" }}>
+    <div className="flex items-center justify-center gap-3 bg-blue-500 px-6 py-2.5 text-sm text-white">
       <Button
         variant="sm"
         disabled={page <= 1}
@@ -15,7 +15,7 @@ export function Pagination({ totalFiles, pageLimit, page, onPageChange }: Pagina
       >
         Précédent
       </Button>
-      <span style={{ fontSize: 14 }}>
+      <span className="text-sm">
         Page {page} sur {totalPages}
       </span>
       <Button

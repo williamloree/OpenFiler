@@ -5,7 +5,7 @@ export function BatchBar({ selectedCount, onDownload, onDelete, onClear }: Batch
   if (selectedCount === 0) return null;
 
   return (
-    <div className="fb-batch-bar">
+    <div className="flex items-center gap-3 bg-blue-500 px-6 py-2.5 text-sm text-white">
       <span>
         <strong>{selectedCount}</strong> fichier(s) sélectionné(s)
       </span>

@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     ).run(id, token, folder, filename, session.user.id, expiresAt, createdAt);
 
     return NextResponse.json(
-      { id, token, folder, filename, expiresAt, createdAt, url: `/s/${token}` },
+      { id, token, folder, filename, expiresAt, createdAt, url: `/share/${token}` },
       { status: 201 }
     );
   } catch (e) {
