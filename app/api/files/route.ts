@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { join } from "path";
-import { readdir, stat, access, unlink, rename } from "fs/promises";
+import { readdir, stat, access, rename as fsRename, copyFile, unlink } from "fs/promises";
 import { getAllPrivateFiles, removeFileMetadata, getFilePrivacy, setFilePrivacy } from "@/lib/metadata";
 import { ensureUploadDirs } from "@/lib/ensure-dirs";
+import { db } from "@/lib/auth/server";
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
       url: string;
       isPrivate: boolean;
     }> = [];
-    const privateFiles = await getAllPrivateFiles();
+    const privateFiles = getAllPrivateFiles();
 
     for (const folderName of folders) {
       const folderPath = join(process.cwd(), "upload", folderName);
@@ -102,13 +103,13 @@ export async function PATCH(request: NextRequest) {
       // Good — file doesn't exist
     }
 
-    await rename(oldPath, newPath);
+    await fsRename(oldPath, newPath);
 
     // Transfer metadata
-    const wasPrivate = await getFilePrivacy(folder, oldName);
-    await removeFileMetadata(folder, oldName);
+    const wasPrivate = getFilePrivacy(folder, oldName);
+    removeFileMetadata(folder, oldName);
     if (wasPrivate) {
-      await setFilePrivacy(folder, newName, true);
+      setFilePrivacy(folder, newName, true);
     }
 
     return NextResponse.json({ message: "Fichier renommé.", oldName, newName });
@@ -154,10 +155,25 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await unlink(filePath);
-    await removeFileMetadata(folder, name);
+    // Soft delete: move to .trash/ instead of permanent deletion
+    const fileStat = await stat(filePath);
+    const trashName = `${Date.now()}_${folder}_${name}`;
+    const trashPath = join(process.cwd(), "upload", ".trash", trashName);
 
-    return NextResponse.json({ message: "Fichier supprimé avec succès.", filename: name });
+    await fsRename(filePath, trashPath).catch(async () => {
+      // Cross-device fallback: copy + delete
+      await copyFile(filePath, trashPath);
+      await unlink(filePath);
+    });
+
+    db.prepare(
+      `INSERT INTO "trash" ("originalFolder", "filename", "trashName", "size", "deletedAt")
+       VALUES (?, ?, ?, ?, ?)`
+    ).run(folder, name, trashName, fileStat.size, new Date().toISOString());
+
+    removeFileMetadata(folder, name);
+
+    return NextResponse.json({ message: "Fichier déplacé dans la corbeille.", filename: name });
   } catch {
     return NextResponse.json(
       { message: "Erreur lors de la suppression du fichier.", error: "INTERNAL_ERROR" },

@@ -41,7 +41,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    await setFilePrivacy(folder, name, isPrivate);
+    setFilePrivacy(folder, name, isPrivate);
 
     return NextResponse.json({
       message: `Visibilité mise à jour: ${isPrivate ? "privé" : "public"}.`,

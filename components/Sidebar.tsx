@@ -15,6 +15,7 @@ export function Sidebar({
   stats,
   storagePct,
   userName,
+  trashCount,
   onOpenSettings,
   onSignOut,
 }: SidebarProps) {
@@ -49,6 +50,15 @@ export function Sidebar({
             </span>
           </div>
         ))}
+        <div className="fb-sidebar-label" style={{ marginTop: 16 }}>Gestion</div>
+        <div
+          className={`fb-nav-item ${currentFolder === "trash" ? "active" : ""}`}
+          onClick={() => selectFolder("trash")}
+        >
+          <span className="fb-nav-icon">🗑️</span>
+          <span className="fb-nav-text">Corbeille</span>
+          <span className="fb-nav-badge">{trashCount}</span>
+        </div>
       </nav>
       <div className="fb-sidebar-stats">
         <div className="fb-stat-row">

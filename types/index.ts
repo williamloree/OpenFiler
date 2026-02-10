@@ -16,6 +16,16 @@ export interface Stats {
   folders: Record<string, { count: number; size: number }>;
 }
 
+export interface TrashItem {
+  id: number;
+  originalFolder: string;
+  filename: string;
+  trashName: string;
+  size: number;
+  deletedBy: string | null;
+  deletedAt: string;
+}
+
 export type SortField = "name" | "folder" | "size" | "modified";
 export type SortDir = "asc" | "desc";
 
@@ -85,6 +95,7 @@ export interface SidebarProps {
   stats: Stats;
   storagePct: number;
   userName: string;
+  trashCount: number;
   onOpenSettings: () => void;
   onSignOut: () => void;
 }

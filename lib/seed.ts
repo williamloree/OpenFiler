@@ -56,6 +56,25 @@ function ensureTables() {
       "userId" TEXT NOT NULL REFERENCES "user"("id"),
       "createdAt" TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS "file_metadata" (
+      "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+      "folder" TEXT NOT NULL,
+      "filename" TEXT NOT NULL,
+      "isPrivate" INTEGER NOT NULL DEFAULT 0,
+      "userId" TEXT REFERENCES "user"("id"),
+      "createdAt" TEXT NOT NULL,
+      "updatedAt" TEXT NOT NULL,
+      UNIQUE("folder", "filename")
+    );
+    CREATE TABLE IF NOT EXISTS "trash" (
+      "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+      "originalFolder" TEXT NOT NULL,
+      "filename" TEXT NOT NULL,
+      "trashName" TEXT NOT NULL UNIQUE,
+      "size" INTEGER NOT NULL DEFAULT 0,
+      "deletedBy" TEXT REFERENCES "user"("id"),
+      "deletedAt" TEXT NOT NULL
+    );
   `);
 }
 

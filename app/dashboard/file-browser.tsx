@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { authClient } from "@/lib/auth/client";
-import type { FileInfo, Stats, SortField, SortDir } from "@/types";
+import type { FileInfo, Stats, SortField, SortDir, TrashItem } from "@/types";
 import { Table } from "@/components/Table";
 import { Sidebar } from "../../components/Sidebar";
 import { Toolbar } from "../../components/Toolbar";
@@ -72,6 +72,8 @@ export function FileBrowser({
   const [totalFiles, setTotalFiles] = useState(0);
   const [renamingFile, setRenamingFile] = useState<FileInfo | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [trashItems, setTrashItems] = useState<TrashItem[]>([]);
+  const [trashCount, setTrashCount] = useState(0);
 
   const PAGE_LIMIT = 50;
   const toastIdRef = useRef(0);
@@ -84,6 +86,17 @@ export function FileBrowser({
       4000,
     );
   }, []);
+
+  const refreshTrash = useCallback(async () => {
+    try {
+      const res = await fetch("/api/trash");
+      const data = await res.json();
+      setTrashItems(data.items || []);
+      setTrashCount(data.items?.length ?? 0);
+    } catch {
+      showToast("Erreur de chargement de la corbeille", "error");
+    }
+  }, [showToast]);
 
   const refreshFiles = useCallback(
     async (p?: number) => {
@@ -98,11 +111,12 @@ export function FileBrowser({
         setAllFiles(filesData.files || []);
         setTotalFiles(filesData.total ?? 0);
         setStats(statsData);
+        refreshTrash();
       } catch {
         showToast("Erreur de chargement", "error");
       }
     },
-    [showToast, page],
+    [showToast, page, refreshTrash],
   );
 
   useEffect(() => {
@@ -373,6 +387,65 @@ export function FileBrowser({
     }
   }
 
+  async function restoreFromTrash(item: TrashItem) {
+    try {
+      const res = await fetch("/api/trash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore", id: item.id }),
+      });
+      if (res.ok) {
+        showToast("Fichier restauré", "success");
+        refreshFiles();
+      } else {
+        const data = await res.json();
+        showToast(data.message, "error");
+      }
+    } catch {
+      showToast("Erreur de connexion", "error");
+    }
+  }
+
+  async function deleteFromTrash(item: TrashItem) {
+    if (!confirm(`Supprimer définitivement "${item.filename}" ?`)) return;
+    try {
+      const res = await fetch("/api/trash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", id: item.id }),
+      });
+      if (res.ok) {
+        showToast("Fichier supprimé définitivement", "success");
+        refreshTrash();
+      } else {
+        const data = await res.json();
+        showToast(data.message, "error");
+      }
+    } catch {
+      showToast("Erreur de connexion", "error");
+    }
+  }
+
+  async function emptyTrash() {
+    if (!confirm("Vider la corbeille ? Cette action est irréversible.")) return;
+    try {
+      const res = await fetch("/api/trash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "empty" }),
+      });
+      if (res.ok) {
+        showToast("Corbeille vidée", "success");
+        refreshTrash();
+      } else {
+        const data = await res.json();
+        showToast(data.message, "error");
+      }
+    } catch {
+      showToast("Erreur de connexion", "error");
+    }
+  }
+
   async function handleSignOut() {
     await authClient.signOut();
     window.location.href = "/login";
@@ -391,86 +464,149 @@ export function FileBrowser({
         stats={stats}
         storagePct={storagePct}
         userName={userName}
+        trashCount={trashCount}
         onOpenSettings={() => setSettingsOpen(true)}
         onSignOut={handleSignOut}
       />
 
       {/* MAIN */}
       <main className="fb-main">
-        <Toolbar
-          currentFolder={currentFolder}
-          selectFolder={selectFolder}
-          search={search}
-          onSearchChange={setSearch}
-          onRefresh={() => refreshFiles()}
-          onOpenUpload={() => {
-            setUploadOpen(true);
-            setUploading(false);
-          }}
-        />
+        {currentFolder === "trash" ? (
+          <>
+            <div className="fb-toolbar">
+              <div className="fb-toolbar-left">
+                <h2 style={{ margin: 0 }}>Corbeille</h2>
+                <span style={{ color: "var(--text-secondary)", fontSize: 14 }}>
+                  {trashItems.length} élément(s) — suppression auto après 30 jours
+                </span>
+              </div>
+              {trashItems.length > 0 && (
+                <Button variant="danger" onClick={emptyTrash}>
+                  Vider la corbeille
+                </Button>
+              )}
+            </div>
 
-        <BatchBar
-          selectedCount={selectedFiles.size}
-          onDownload={batchDownload}
-          onDelete={batchDelete}
-          onClear={() => setSelectedFiles(new Set())}
-        />
-
-        {/* TABLE */}
-        {displayedFiles.length > 0 ? (
-          <div className="fb-table-container">
-            <Table
-              files={displayedFiles}
-              selectedFiles={selectedFiles}
-              sortField={sortField}
-              sortDir={sortDir}
-              renamingFile={renamingFile}
-              renameValue={renameValue}
-              onSort={handleSort}
-              onToggleSelectAll={toggleSelectAll}
-              onSelect={toggleSelect}
-              onToggleVisibility={toggleVisibility}
-              onPreview={setPreviewFile}
-              onStartRename={(file) => {
-                setRenamingFile(file);
-                setRenameValue(file.name);
-              }}
-              onRenameChange={setRenameValue}
-              onRenameConfirm={handleRename}
-              onRenameCancel={() => setRenamingFile(null)}
-              onDownload={(file) =>
-                window.open(
-                  `/api/download/${file.folder}/${encodeURIComponent(file.name)}`,
-                  "_blank",
-                )
-              }
-              onDelete={deleteSingleFile}
-            />
-          </div>
+            {trashItems.length > 0 ? (
+              <div className="fb-table-container">
+                <table className="fb-table">
+                  <thead>
+                    <tr>
+                      <th>Nom</th>
+                      <th>Dossier d&apos;origine</th>
+                      <th>Taille</th>
+                      <th>Supprimé le</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trashItems.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.filename}</td>
+                        <td>{getFolderIcon(item.originalFolder)} {item.originalFolder}</td>
+                        <td>{formatSize(item.size)}</td>
+                        <td>{formatDate(item.deletedAt)}</td>
+                        <td>
+                          <div style={{ display: "flex", gap: 4 }}>
+                            <Button variant="outline" onClick={() => restoreFromTrash(item)}>
+                              Restaurer
+                            </Button>
+                            <Button variant="danger" onClick={() => deleteFromTrash(item)}>
+                              Supprimer
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="fb-empty-state">
+                <div className="fb-empty-icon">🗑️</div>
+                <h3>Corbeille vide</h3>
+                <p>Les fichiers supprimés apparaîtront ici.</p>
+              </div>
+            )}
+          </>
         ) : (
-          <div className="fb-empty-state">
-            <div className="fb-empty-icon">📂</div>
-            <h3>Aucun fichier</h3>
-            <p>Ce dossier est vide. Uploadez des fichiers pour commencer.</p>
-            <Button
-              variant="primary"
-              style={{ marginTop: 16 }}
-              onClick={() => {
+          <>
+            <Toolbar
+              currentFolder={currentFolder}
+              selectFolder={selectFolder}
+              search={search}
+              onSearchChange={setSearch}
+              onRefresh={() => refreshFiles()}
+              onOpenUpload={() => {
                 setUploadOpen(true);
                 setUploading(false);
               }}
-            >
-              📥 Upload
-            </Button>
-          </div>
-        )}
+            />
 
-        <Pagination
-          totalFiles={totalFiles}
-          pageLimit={PAGE_LIMIT}
-          page={page}
-          onPageChange={goToPage}
-        />
+            <BatchBar
+              selectedCount={selectedFiles.size}
+              onDownload={batchDownload}
+              onDelete={batchDelete}
+              onClear={() => setSelectedFiles(new Set())}
+            />
+
+            {/* TABLE */}
+            {displayedFiles.length > 0 ? (
+              <div className="fb-table-container">
+                <Table
+                  files={displayedFiles}
+                  selectedFiles={selectedFiles}
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  renamingFile={renamingFile}
+                  renameValue={renameValue}
+                  onSort={handleSort}
+                  onToggleSelectAll={toggleSelectAll}
+                  onSelect={toggleSelect}
+                  onToggleVisibility={toggleVisibility}
+                  onPreview={setPreviewFile}
+                  onStartRename={(file) => {
+                    setRenamingFile(file);
+                    setRenameValue(file.name);
+                  }}
+                  onRenameChange={setRenameValue}
+                  onRenameConfirm={handleRename}
+                  onRenameCancel={() => setRenamingFile(null)}
+                  onDownload={(file) =>
+                    window.open(
+                      `/api/download/${file.folder}/${encodeURIComponent(file.name)}`,
+                      "_blank",
+                    )
+                  }
+                  onDelete={deleteSingleFile}
+                />
+              </div>
+            ) : (
+              <div className="fb-empty-state">
+                <div className="fb-empty-icon">📂</div>
+                <h3>Aucun fichier</h3>
+                <p>Ce dossier est vide. Uploadez des fichiers pour commencer.</p>
+                <Button
+                  variant="primary"
+                  style={{ marginTop: 16 }}
+                  onClick={() => {
+                    setUploadOpen(true);
+                    setUploading(false);
+                  }}
+                >
+                  📥 Upload
+                </Button>
+              </div>
+            )}
+
+            <Pagination
+              totalFiles={totalFiles}
+              pageLimit={PAGE_LIMIT}
+              page={page}
+              onPageChange={goToPage}
+            />
+          </>
+        )}
       </main>
 
       {previewFile && (

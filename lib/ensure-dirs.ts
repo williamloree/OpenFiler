@@ -11,6 +11,7 @@ export function ensureUploadDirs() {
     mkdirSync(join(uploadDir, "image"), { recursive: true });
     mkdirSync(join(uploadDir, "document"), { recursive: true });
     mkdirSync(join(uploadDir, "video"), { recursive: true });
+    mkdirSync(join(uploadDir, ".trash"), { recursive: true });
     initialized = true;
   } catch {
     // ignore if already exists

@@ -1,58 +1,30 @@
-import { join } from "path";
-import { readFile, writeFile } from "fs/promises";
+import { db } from "./auth/server";
 
-interface FileMetadata {
-  isPrivate: boolean;
+export function getFilePrivacy(folder: string, filename: string): boolean {
+  const row = db.prepare(
+    `SELECT "isPrivate" FROM "file_metadata" WHERE "folder" = ? AND "filename" = ?`
+  ).get(folder, filename) as { isPrivate: number } | undefined;
+  return row?.isPrivate === 1;
 }
 
-type MetadataStore = Record<string, FileMetadata>;
-
-const METADATA_PATH = join(process.cwd(), "upload", ".metadata.json");
-
-async function loadMetadata(): Promise<MetadataStore> {
-  try {
-    const data = await readFile(METADATA_PATH, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return {};
-  }
+export function setFilePrivacy(folder: string, filename: string, isPrivate: boolean): void {
+  const now = new Date().toISOString();
+  db.prepare(
+    `INSERT INTO "file_metadata" ("folder", "filename", "isPrivate", "createdAt", "updatedAt")
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT("folder", "filename") DO UPDATE SET "isPrivate" = ?, "updatedAt" = ?`
+  ).run(folder, filename, isPrivate ? 1 : 0, now, now, isPrivate ? 1 : 0, now);
 }
 
-async function saveMetadata(store: MetadataStore): Promise<void> {
-  await writeFile(METADATA_PATH, JSON.stringify(store, null, 2), "utf-8");
+export function getAllPrivateFiles(): Set<string> {
+  const rows = db.prepare(
+    `SELECT "folder", "filename" FROM "file_metadata" WHERE "isPrivate" = 1`
+  ).all() as { folder: string; filename: string }[];
+  return new Set(rows.map((r) => `${r.folder}/${r.filename}`));
 }
 
-export async function getFilePrivacy(folder: string, filename: string): Promise<boolean> {
-  const store = await loadMetadata();
-  const key = `${folder}/${filename}`;
-  return store[key]?.isPrivate ?? false;
-}
-
-export async function setFilePrivacy(folder: string, filename: string, isPrivate: boolean): Promise<void> {
-  const store = await loadMetadata();
-  const key = `${folder}/${filename}`;
-  if (isPrivate) {
-    store[key] = { isPrivate: true };
-  } else {
-    delete store[key];
-  }
-  await saveMetadata(store);
-}
-
-export async function getAllPrivateFiles(): Promise<Set<string>> {
-  const store = await loadMetadata();
-  const privateSet = new Set<string>();
-  for (const [key, meta] of Object.entries(store)) {
-    if (meta.isPrivate) privateSet.add(key);
-  }
-  return privateSet;
-}
-
-export async function removeFileMetadata(folder: string, filename: string): Promise<void> {
-  const store = await loadMetadata();
-  const key = `${folder}/${filename}`;
-  if (key in store) {
-    delete store[key];
-    await saveMetadata(store);
-  }
+export function removeFileMetadata(folder: string, filename: string): void {
+  db.prepare(
+    `DELETE FROM "file_metadata" WHERE "folder" = ? AND "filename" = ?`
+  ).run(folder, filename);
 }
