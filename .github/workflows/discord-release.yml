@@ -1,0 +1,60 @@
+name: Discord Release Notification
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Discord webhook
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          REPO_NAME: ${{ github.repository }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          AUTHOR: ${{ github.event.release.author.login }}
+        run: |
+          ESCAPED_BODY=$(echo "$RELEASE_BODY" | jq -Rs .)
+
+          curl -X POST "$DISCORD_WEBHOOK" \
+          -H "Content-Type: application/json" \
+          -d "{
+            \"username\": \"GitHub Releases\",
+            \"embeds\": [
+              {
+                \"title\": \"🚀 Nouvelle release : $RELEASE_NAME\",
+                \"url\": \"$RELEASE_URL\",
+                \"color\": 5763719,
+                \"fields\": [
+                  {
+                    \"name\": \"📦 Projet\",
+                    \"value\": \"$REPO_NAME\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"🏷️ Version\",
+                    \"value\": \"$RELEASE_TAG\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"👤 Auteur\",
+                    \"value\": \"$AUTHOR\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"📝 Changements\",
+                    \"value\": $ESCAPED_BODY
+                  }
+                ],
+                \"footer\": {
+                  \"text\": \"Release automatique via GitHub Actions\"
+                },
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+              }
+            ]
+          }"
