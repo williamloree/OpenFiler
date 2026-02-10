@@ -3,6 +3,7 @@ import { join } from "path";
 import { mkdir, writeFile, statfs } from "fs/promises";
 import { getSlugifiedFilename } from "@/lib/slug";
 import { ALLOWED_MIME_TYPES, MAX_FILE_SIZE, MAX_FILES_PER_FIELD, getFolderForMimeType } from "@/lib/upload-config";
+import { detectMimeType, detectedTypeMatchesFolder } from "@/lib/magic-bytes";
 import { db } from "@/lib/auth/server";
 import { requireSession } from "@/lib/auth/require-session";
 
@@ -112,6 +113,19 @@ export async function POST(request: NextRequest) {
       await mkdir(folderPath, { recursive: true });
 
       const buffer = Buffer.from(await file.arrayBuffer());
+
+      // Validate actual file content via magic bytes
+      const detectedMime = detectMimeType(buffer);
+      if (detectedMime && !detectedTypeMatchesFolder(detectedMime, folder)) {
+        return NextResponse.json(
+          {
+            message: `Le contenu du fichier "${file.name}" ne correspond pas au type déclaré.`,
+            error: "INVALID_FILE_CONTENT",
+          },
+          { status: 400 }
+        );
+      }
+
       await writeFile(join(folderPath, filename), buffer);
 
       files.push({
@@ -140,7 +154,8 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] Upload error:", e);
     return NextResponse.json(
       { message: "Erreur lors de l'enregistrement des fichiers.", error: "INTERNAL_ERROR" },
       { status: 500 }

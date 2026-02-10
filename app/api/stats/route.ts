@@ -1,9 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { join } from "path";
 import { readdir, stat } from "fs/promises";
+import { requireSession } from "@/lib/auth/require-session";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const session = await requireSession(request);
+    if (!session) {
+      return NextResponse.json(
+        { message: "Authentification requise.", error: "UNAUTHORIZED" },
+        { status: 401 }
+      );
+    }
+
     const folders = ["image", "document", "video"];
     const stats: Record<string, { count: number; size: number }> = {};
     let totalFiles = 0;
@@ -34,7 +43,8 @@ export async function GET() {
     }
 
     return NextResponse.json({ totalFiles, totalSize, folders: stats });
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] Stats error:", e);
     return NextResponse.json(
       { message: "Erreur lors de la récupération des statistiques.", error: "INTERNAL_ERROR" },
       { status: 500 }

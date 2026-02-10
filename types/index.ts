@@ -42,6 +42,15 @@ export interface ApiToken {
   createdAt: string;
 }
 
+export interface ShareLink {
+  id: string;
+  token: string;
+  folder: string;
+  filename: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
 // ===== Component Props =====
 
 export interface ItemProps {
@@ -58,6 +67,7 @@ export interface ItemProps {
   onRenameCancel: () => void;
   onDownload: () => void;
   onDelete: () => void;
+  onShare: () => void;
 }
 
 export interface TableProps {
@@ -78,6 +88,7 @@ export interface TableProps {
   onRenameCancel: () => void;
   onDownload: (file: FileInfo) => void;
   onDelete: (file: FileInfo) => void;
+  onShare: (file: FileInfo) => void;
 }
 
 export interface ToolbarProps {

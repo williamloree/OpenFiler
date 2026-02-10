@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { join } from "path";
+import { unlinkSync } from "fs";
 import { access, unlink, rename as fsRename, copyFile } from "fs/promises";
 import { db } from "@/lib/auth/server";
 import { ensureUploadDirs } from "@/lib/ensure-dirs";
@@ -25,7 +26,7 @@ function autoPurge() {
   for (const row of expired) {
     const trashPath = join(process.cwd(), "upload", ".trash", row.trashName);
     try {
-      require("fs").unlinkSync(trashPath);
+      unlinkSync(trashPath);
     } catch {
       // file may already be gone
     }
@@ -46,7 +47,8 @@ export async function GET() {
     ).all() as TrashRow[];
 
     return NextResponse.json({ items });
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] Trash list error:", e);
     return NextResponse.json(
       { message: "Erreur lors de la récupération de la corbeille.", error: "INTERNAL_ERROR" },
       { status: 500 }
@@ -147,7 +149,8 @@ export async function POST(request: NextRequest) {
       { message: "Action non reconnue.", error: "INVALID_ACTION" },
       { status: 400 }
     );
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] Trash operation error:", e);
     return NextResponse.json(
       { message: "Erreur lors de l'opération sur la corbeille.", error: "INTERNAL_ERROR" },
       { status: 500 }

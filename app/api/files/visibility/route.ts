@@ -49,7 +49,8 @@ export async function PATCH(request: NextRequest) {
       folder,
       isPrivate,
     });
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] Visibility error:", e);
     return NextResponse.json(
       { message: "Erreur lors de la mise à jour de la visibilité.", error: "INTERNAL_ERROR" },
       { status: 500 }

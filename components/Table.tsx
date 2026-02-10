@@ -26,6 +26,7 @@ export function Table({
   onRenameCancel,
   onDownload,
   onDelete,
+  onShare,
 }: TableProps) {
   return (
     <table className="fb-table">
@@ -71,6 +72,7 @@ export function Table({
             onRenameCancel={onRenameCancel}
             onDownload={() => onDownload(file)}
             onDelete={() => onDelete(file)}
+            onShare={() => onShare(file)}
           />
         ))}
       </tbody>

@@ -26,6 +26,13 @@ export async function GET(
       );
     }
 
+    if (name.includes("..") || name.includes("/") || name.includes("\\") || name.startsWith(".")) {
+      return NextResponse.json(
+        { message: "Nom de fichier non valide.", error: "INVALID_FILENAME" },
+        { status: 400 }
+      );
+    }
+
     const filePath = join(process.cwd(), "upload", folder, name);
 
     try {
@@ -56,7 +63,8 @@ export async function GET(
         "Cache-Control": "private, no-store",
       },
     });
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] Download error:", e);
     return NextResponse.json(
       { message: "Erreur lors du téléchargement du fichier.", error: "INTERNAL_ERROR" },
       { status: 500 }

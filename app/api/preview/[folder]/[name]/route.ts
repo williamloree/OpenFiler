@@ -58,7 +58,8 @@ export async function GET(
         "Cache-Control": "no-cache, no-store, must-revalidate",
       },
     });
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] Preview error:", e);
     return NextResponse.json(
       { message: "Erreur lors de la récupération du fichier.", error: "INTERNAL_ERROR" },
       { status: 500 }
