@@ -3,10 +3,19 @@ import { join } from "path";
 import { readdir, stat, access, rename as fsRename, copyFile, unlink } from "fs/promises";
 import { getAllPrivateFiles, removeFileMetadata, getFilePrivacy, setFilePrivacy } from "@/lib/metadata";
 import { ensureUploadDirs } from "@/lib/ensure-dirs";
+import { requireSession } from "@/lib/auth/require-session";
 import { db } from "@/lib/auth/server";
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await requireSession(request);
+    if (!session) {
+      return NextResponse.json(
+        { message: "Authentification requise.", error: "UNAUTHORIZED" },
+        { status: 401 }
+      );
+    }
+
     ensureUploadDirs();
     const { searchParams } = new URL(request.url);
     const folder = searchParams.get("folder");
@@ -76,6 +85,14 @@ function hasPathTraversal(name: string): boolean {
 
 export async function PATCH(request: NextRequest) {
   try {
+    const session = await requireSession(request);
+    if (!session) {
+      return NextResponse.json(
+        { message: "Authentification requise.", error: "UNAUTHORIZED" },
+        { status: 401 }
+      );
+    }
+
     const { folder, oldName, newName } = await request.json();
 
     if (!folder || !oldName || !newName) {
@@ -122,6 +139,14 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const session = await requireSession(request);
+    if (!session) {
+      return NextResponse.json(
+        { message: "Authentification requise.", error: "UNAUTHORIZED" },
+        { status: 401 }
+      );
+    }
+
     const { name, type } = await request.json();
 
     if (!name || !type) {

@@ -13,6 +13,7 @@ import { Button } from "../../components/ui/Button";
 import { PreviewModal } from "../../components/modal/PreviewModal";
 import { UploadModal } from "../../components/modal/UploadModal";
 import { SettingsModal } from "../../components/modal/SettingsModal";
+import { ShareModal } from "../../components/modal/ShareModal";
 
 export type { FileInfo, Stats, SortField, SortDir };
 
@@ -74,6 +75,7 @@ export function FileBrowser({
   const [renameValue, setRenameValue] = useState("");
   const [trashItems, setTrashItems] = useState<TrashItem[]>([]);
   const [trashCount, setTrashCount] = useState(0);
+  const [shareFile, setShareFile] = useState<FileInfo | null>(null);
 
   const PAGE_LIMIT = 50;
   const toastIdRef = useRef(0);
@@ -579,6 +581,7 @@ export function FileBrowser({
                     )
                   }
                   onDelete={deleteSingleFile}
+                  onShare={setShareFile}
                 />
               </div>
             ) : (
@@ -637,6 +640,13 @@ export function FileBrowser({
           userName={userName}
           userEmail={userEmail}
           onClose={() => setSettingsOpen(false)}
+        />
+      )}
+
+      {shareFile && (
+        <ShareModal
+          file={shareFile}
+          onClose={() => setShareFile(null)}
         />
       )}
 

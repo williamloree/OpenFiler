@@ -75,6 +75,15 @@ function ensureTables() {
       "deletedBy" TEXT REFERENCES "user"("id"),
       "deletedAt" TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS "share_link" (
+      "id" TEXT PRIMARY KEY,
+      "token" TEXT NOT NULL UNIQUE,
+      "folder" TEXT NOT NULL,
+      "filename" TEXT NOT NULL,
+      "userId" TEXT NOT NULL REFERENCES "user"("id"),
+      "expiresAt" TEXT NOT NULL,
+      "createdAt" TEXT NOT NULL
+    );
   `);
 }
 

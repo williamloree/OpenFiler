@@ -26,6 +26,13 @@ export async function GET(
       );
     }
 
+    if (name.includes("..") || name.includes("/") || name.includes("\\") || name.startsWith(".")) {
+      return NextResponse.json(
+        { message: "Nom de fichier non valide.", error: "INVALID_FILENAME" },
+        { status: 400 }
+      );
+    }
+
     const filePath = join(process.cwd(), "upload", folder, name);
 
     try {

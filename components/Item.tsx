@@ -17,6 +17,7 @@ export function Item({
   onRenameCancel,
   onDownload,
   onDelete,
+  onShare,
 }: ItemProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [previewPos, setPreviewPos] = useState({ x: 0, y: 0 });
@@ -198,6 +199,9 @@ export function Item({
           </Button>
           <Button variant="ghost" onClick={onStartRename} title="Renommer">
             📝
+          </Button>
+          <Button variant="ghost" onClick={onShare} title="Partager">
+            🔗
           </Button>
           <Button variant="ghost" onClick={onDownload} title="Télécharger">
             📥
