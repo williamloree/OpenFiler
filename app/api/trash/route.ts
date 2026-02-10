@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { join } from "path";
+import { unlinkSync } from "fs";
 import { access, unlink, rename as fsRename, copyFile } from "fs/promises";
 import { db } from "@/lib/auth/server";
 import { ensureUploadDirs } from "@/lib/ensure-dirs";
@@ -25,7 +26,7 @@ function autoPurge() {
   for (const row of expired) {
     const trashPath = join(process.cwd(), "upload", ".trash", row.trashName);
     try {
-      require("fs").unlinkSync(trashPath);
+      unlinkSync(trashPath);
     } catch {
       // file may already be gone
     }

@@ -21,6 +21,9 @@ ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
+# better-sqlite3 native binary needs libstdc++ at runtime
+RUN apk add --no-cache libstdc++
+
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
@@ -36,7 +39,7 @@ COPY --from=deps /app/node_modules/prebuild-install ./node_modules/prebuild-inst
 COPY --from=deps /app/node_modules/file-uri-to-path ./node_modules/file-uri-to-path
 
 # Create upload and data directories
-RUN mkdir -p /app/upload /app/data && chown -R nextjs:nodejs /app/upload /app/data
+RUN mkdir -p /app/upload /app/upload/.trash /app/data && chown -R nextjs:nodejs /app/upload /app/data
 
 USER nextjs
 EXPOSE 3000
