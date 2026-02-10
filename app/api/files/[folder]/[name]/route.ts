@@ -32,7 +32,8 @@ export async function GET(
         { status: 404 }
       );
     }
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] File info error:", e);
     return NextResponse.json(
       { message: "Erreur lors de la récupération des informations du fichier.", error: "INTERNAL_ERROR" },
       { status: 500 }

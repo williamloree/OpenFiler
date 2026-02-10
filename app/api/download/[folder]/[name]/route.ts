@@ -56,7 +56,8 @@ export async function GET(
         "Cache-Control": "private, no-store",
       },
     });
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] Download error:", e);
     return NextResponse.json(
       { message: "Erreur lors du téléchargement du fichier.", error: "INTERNAL_ERROR" },
       { status: 500 }

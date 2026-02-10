@@ -107,7 +107,8 @@ export async function POST(request: NextRequest) {
         "Content-Disposition": 'attachment; filename="openfiler-download.zip"',
       },
     });
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] Batch download error:", e);
     return NextResponse.json(
       { message: "Erreur lors de la création de l'archive.", error: "INTERNAL_ERROR" },
       { status: 500 }

@@ -47,7 +47,8 @@ export async function GET() {
     ).all() as TrashRow[];
 
     return NextResponse.json({ items });
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] Trash list error:", e);
     return NextResponse.json(
       { message: "Erreur lors de la récupération de la corbeille.", error: "INTERNAL_ERROR" },
       { status: 500 }
@@ -148,7 +149,8 @@ export async function POST(request: NextRequest) {
       { message: "Action non reconnue.", error: "INVALID_ACTION" },
       { status: 400 }
     );
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] Trash operation error:", e);
     return NextResponse.json(
       { message: "Erreur lors de l'opération sur la corbeille.", error: "INTERNAL_ERROR" },
       { status: 500 }

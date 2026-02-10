@@ -59,7 +59,8 @@ export async function GET(request: NextRequest) {
     const paginatedFiles = allFiles.slice(start, start + limit);
 
     return NextResponse.json({ files: paginatedFiles, total, page, limit });
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] Files list error:", e);
     return NextResponse.json(
       { message: "Erreur lors de la récupération de la liste des fichiers.", error: "INTERNAL_ERROR" },
       { status: 500 }
@@ -113,7 +114,8 @@ export async function PATCH(request: NextRequest) {
     }
 
     return NextResponse.json({ message: "Fichier renommé.", oldName, newName });
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] Rename error:", e);
     return NextResponse.json({ message: "Erreur lors du renommage.", error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }
@@ -174,7 +176,8 @@ export async function DELETE(request: NextRequest) {
     removeFileMetadata(folder, name);
 
     return NextResponse.json({ message: "Fichier déplacé dans la corbeille.", filename: name });
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] Delete error:", e);
     return NextResponse.json(
       { message: "Erreur lors de la suppression du fichier.", error: "INTERNAL_ERROR" },
       { status: 500 }

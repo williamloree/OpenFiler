@@ -232,8 +232,8 @@ export function FileBrowser({
           }),
         });
         if (res.ok) deleted++;
-      } catch {
-        /* continue */
+      } catch (e) {
+        console.error("[OpenFiler] Batch delete error:", e);
       }
     }
     showToast(`${deleted} fichier(s) supprimé(s)`, "success");

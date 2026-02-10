@@ -17,8 +17,8 @@ export function TokensSection() {
         const data = await res.json();
         setTokens(data.tokens);
       }
-    } catch {
-      /* ignore */
+    } catch (e) {
+      console.error("[OpenFiler] Fetch tokens error:", e);
     }
   }, []);
 
@@ -43,8 +43,8 @@ export function TokensSection() {
         setNewName("");
         fetchTokens();
       }
-    } catch {
-      /* ignore */
+    } catch (e) {
+      console.error("[OpenFiler] Create token error:", e);
     }
     setLoading(false);
   }
@@ -59,8 +59,8 @@ export function TokensSection() {
       if (res.ok) {
         setTokens((prev) => prev.filter((t) => t.id !== id));
       }
-    } catch {
-      /* ignore */
+    } catch (e) {
+      console.error("[OpenFiler] Delete token error:", e);
     }
   }
 

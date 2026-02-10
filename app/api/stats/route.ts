@@ -34,7 +34,8 @@ export async function GET() {
     }
 
     return NextResponse.json({ totalFiles, totalSize, folders: stats });
-  } catch {
+  } catch (e) {
+    console.error("[OpenFiler] Stats error:", e);
     return NextResponse.json(
       { message: "Erreur lors de la récupération des statistiques.", error: "INTERNAL_ERROR" },
       { status: 500 }
