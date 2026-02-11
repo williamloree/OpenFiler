@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { join } from "path";
 import { readdir, stat, access, rename as fsRename, copyFile, unlink } from "fs/promises";
 import { getAllPrivateFiles, removeFileMetadata, getFilePrivacy, setFilePrivacy } from "@/lib/metadata";
+import { deleteFileViews } from "@/lib/tracking";
 import { ensureUploadDirs } from "@/lib/ensure-dirs";
 import { requireSession } from "@/lib/auth/require-session";
 import { db } from "@/lib/auth/server";
@@ -199,6 +200,7 @@ export async function DELETE(request: NextRequest) {
     ).run(folder, name, trashName, fileStat.size, new Date().toISOString());
 
     removeFileMetadata(folder, name);
+    deleteFileViews(folder, name);
 
     return NextResponse.json({ message: "Fichier déplacé dans la corbeille.", filename: name });
   } catch (e) {

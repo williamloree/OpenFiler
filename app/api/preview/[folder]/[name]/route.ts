@@ -5,6 +5,7 @@ import { ALLOWED_FOLDERS } from "@/lib/upload-config";
 import { getFilePrivacy } from "@/lib/metadata";
 import { requireSession } from "@/lib/auth/require-session";
 import { lookup } from "@/lib/mime";
+import { logFileView } from "@/lib/tracking";
 
 export async function GET(
   request: NextRequest,
@@ -51,6 +52,21 @@ export async function GET(
 
     const fileBuffer = await readFile(filePath);
     const contentType = lookup(name);
+
+    try {
+      const session = await requireSession(request);
+      logFileView({
+        folder,
+        filename: name,
+        action: "preview",
+        userId: session?.user?.id ?? null,
+        ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+        userAgent: request.headers.get("user-agent") ?? null,
+        referer: request.headers.get("referer") ?? null,
+      });
+    } catch (trackingErr) {
+      console.error("[OpenFiler] Tracking error (preview):", trackingErr);
+    }
 
     return new NextResponse(fileBuffer, {
       headers: {

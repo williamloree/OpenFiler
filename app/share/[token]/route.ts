@@ -3,6 +3,7 @@ import { join } from "path";
 import { readFile } from "fs/promises";
 import { db } from "@/lib/auth/server";
 import { lookup } from "@/lib/mime";
+import { logFileView } from "@/lib/tracking";
 
 interface ShareRow {
   id: string;
@@ -13,7 +14,7 @@ interface ShareRow {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
@@ -51,6 +52,20 @@ export async function GET(
     try {
       const fileBuffer = await readFile(filePath);
       const contentType = lookup(link.filename);
+
+      try {
+        logFileView({
+          folder: link.folder,
+          filename: link.filename,
+          action: "share_view",
+          userId: null,
+          ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+          userAgent: request.headers.get("user-agent") ?? null,
+          referer: request.headers.get("referer") ?? null,
+        });
+      } catch (trackingErr) {
+        console.error("[OpenFiler] Tracking error (share_view):", trackingErr);
+      }
 
       return new NextResponse(fileBuffer, {
         headers: {

@@ -84,6 +84,19 @@ function ensureTables() {
       "expiresAt" TEXT NOT NULL,
       "createdAt" TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS "file_view" (
+      "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+      "folder" TEXT NOT NULL,
+      "filename" TEXT NOT NULL,
+      "action" TEXT NOT NULL DEFAULT 'preview',
+      "userId" TEXT,
+      "ipAddress" TEXT,
+      "userAgent" TEXT,
+      "referer" TEXT,
+      "viewedAt" TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS "idx_file_view_file" ON "file_view" ("folder", "filename");
+    CREATE INDEX IF NOT EXISTS "idx_file_view_date" ON "file_view" ("viewedAt");
   `);
 }
 
