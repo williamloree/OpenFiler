@@ -2,8 +2,17 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { authClient } from "@/lib/auth/client";
-import type { FileInfo, Stats, SortField, SortDir, TrashItem } from "@/types";
-import { Table } from "@/components/Table";
+import type {
+  FileInfo,
+  Stats,
+  SortField,
+  SortDir,
+  TrashItem,
+  FileTrackingSummary,
+  FileViewRecord,
+  TrackingSortField,
+} from "@/types";
+import { Table } from "@/components/table/Table";
 import { Sidebar } from "../components/Sidebar";
 import { Toolbar } from "../components/Toolbar";
 import { BatchBar } from "../components/BatchBar";
@@ -14,6 +23,9 @@ import { PreviewModal } from "../components/modal/PreviewModal";
 import { UploadModal } from "../components/modal/UploadModal";
 import { SettingsModal } from "../components/modal/SettingsModal";
 import { ShareModal } from "../components/modal/ShareModal";
+import { TrashTable } from "../components/table/TrashTable";
+import { TrackingTable } from "../components/table/TrackingTable";
+import { TrackingDetailTable } from "../components/table/TrackingDetailTable";
 
 export type { FileInfo, Stats, SortField, SortDir };
 
@@ -75,7 +87,25 @@ export function Dashboard({
   const [renameValue, setRenameValue] = useState("");
   const [trashItems, setTrashItems] = useState<TrashItem[]>([]);
   const [trashCount, setTrashCount] = useState(0);
+  const [selectedTrashItems, setSelectedTrashItems] = useState<Set<number>>(
+    new Set(),
+  );
   const [shareFile, setShareFile] = useState<FileInfo | null>(null);
+
+  const [trackingData, setTrackingData] = useState<FileTrackingSummary[]>([]);
+  const [trackingDetail, setTrackingDetail] = useState<{
+    folder: string;
+    filename: string;
+  } | null>(null);
+  const [trackingDetailData, setTrackingDetailData] = useState<
+    FileViewRecord[]
+  >([]);
+  const [trackingSortField, setTrackingSortField] =
+    useState<TrackingSortField>("totalViews");
+  const [trackingSortDir, setTrackingSortDir] = useState<SortDir>("desc");
+  const [selectedTrackingFiles, setSelectedTrackingFiles] = useState<
+    Set<string>
+  >(new Set());
 
   const PAGE_LIMIT = 50;
   const toastIdRef = useRef(0);
@@ -99,6 +129,32 @@ export function Dashboard({
       showToast("Erreur de chargement de la corbeille", "error");
     }
   }, [showToast]);
+
+  const refreshTracking = useCallback(async () => {
+    try {
+      const res = await fetch("/api/tracking");
+      const data = await res.json();
+      setTrackingData(data.files || []);
+    } catch {
+      showToast("Erreur de chargement du suivi", "error");
+    }
+  }, [showToast]);
+
+  const loadTrackingDetail = useCallback(
+    async (folder: string, filename: string) => {
+      try {
+        const res = await fetch(
+          `/api/tracking?folder=${encodeURIComponent(folder)}&filename=${encodeURIComponent(filename)}`,
+        );
+        const data = await res.json();
+        setTrackingDetailData(data.recentViews || []);
+        setTrackingDetail({ folder, filename });
+      } catch {
+        showToast("Erreur de chargement des détails", "error");
+      }
+    },
+    [showToast],
+  );
 
   const refreshFiles = useCallback(
     async (p?: number) => {
@@ -167,7 +223,13 @@ export function Dashboard({
   function selectFolder(folder: string) {
     setCurrentFolder(folder);
     setSelectedFiles(new Set());
+    setSelectedTrackingFiles(new Set());
+    setSelectedTrashItems(new Set());
     setPage(1);
+    setTrackingDetail(null);
+    if (folder === "tracking") {
+      refreshTracking();
+    }
   }
 
   function toggleSelect(filename: string) {
@@ -448,10 +510,177 @@ export function Dashboard({
     }
   }
 
+  function toggleTrashSelect(id: number) {
+    setSelectedTrashItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleTrashSelectAll() {
+    if (selectedTrashItems.size === trashItems.length) {
+      setSelectedTrashItems(new Set());
+    } else {
+      setSelectedTrashItems(new Set(trashItems.map((i) => i.id)));
+    }
+  }
+
+  async function batchRestoreTrash() {
+    const toRestore = trashItems.filter((i) => selectedTrashItems.has(i.id));
+    let restored = 0;
+    for (const item of toRestore) {
+      try {
+        const res = await fetch("/api/trash", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "restore", id: item.id }),
+        });
+        if (res.ok) restored++;
+      } catch (e) {
+        console.error("[OpenFiler] Batch restore error:", e);
+      }
+    }
+    showToast(`${restored} fichier(s) restauré(s)`, "success");
+    setSelectedTrashItems(new Set());
+    refreshFiles();
+  }
+
+  async function batchDeleteTrash() {
+    if (
+      !confirm(
+        `Supprimer définitivement ${selectedTrashItems.size} fichier(s) ?`,
+      )
+    )
+      return;
+    const toDelete = trashItems.filter((i) => selectedTrashItems.has(i.id));
+    let deleted = 0;
+    for (const item of toDelete) {
+      try {
+        const res = await fetch("/api/trash", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "delete", id: item.id }),
+        });
+        if (res.ok) deleted++;
+      } catch (e) {
+        console.error("[OpenFiler] Batch trash delete error:", e);
+      }
+    }
+    showToast(`${deleted} fichier(s) supprimé(s) définitivement`, "success");
+    setSelectedTrashItems(new Set());
+    refreshTrash();
+  }
+
   async function handleSignOut() {
     await authClient.signOut();
     window.location.href = "/login";
   }
+
+  async function deleteTrackingLogs(folder?: string, filename?: string) {
+    const label = folder && filename ? `"${filename}"` : "tous les fichiers";
+    if (!confirm(`Supprimer les logs de suivi pour ${label} ?`)) return;
+    try {
+      const params =
+        folder && filename
+          ? `?folder=${encodeURIComponent(folder)}&filename=${encodeURIComponent(filename)}`
+          : "";
+      const res = await fetch(`/api/tracking${params}`, { method: "DELETE" });
+      if (res.ok) {
+        const data = await res.json();
+        showToast(data.message, "success");
+        if (folder && filename) {
+          setTrackingDetail(null);
+        }
+        refreshTracking();
+      } else {
+        const data = await res.json();
+        showToast(data.message, "error");
+      }
+    } catch {
+      showToast("Erreur de connexion", "error");
+    }
+  }
+
+  function goToTracking(file: FileInfo) {
+    setCurrentFolder("tracking");
+    setTrackingDetail(null);
+    refreshTracking();
+    loadTrackingDetail(file.folder, file.name);
+  }
+
+  function handleTrackingSort(field: TrackingSortField) {
+    if (trackingSortField === field) {
+      setTrackingSortDir(trackingSortDir === "asc" ? "desc" : "asc");
+    } else {
+      setTrackingSortField(field);
+      setTrackingSortDir("desc");
+    }
+  }
+
+  function toggleTrackingSelect(key: string) {
+    setSelectedTrackingFiles((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function toggleTrackingSelectAll() {
+    if (selectedTrackingFiles.size === sortedTrackingData.length) {
+      setSelectedTrackingFiles(new Set());
+    } else {
+      setSelectedTrackingFiles(
+        new Set(
+          sortedTrackingData.map((f) => `${f.folder}/${f.filename}`),
+        ),
+      );
+    }
+  }
+
+  async function batchDeleteTrackingLogs() {
+    if (
+      !confirm(
+        `Supprimer les logs de suivi pour ${selectedTrackingFiles.size} fichier(s) ?`,
+      )
+    )
+      return;
+    let deleted = 0;
+    for (const key of selectedTrackingFiles) {
+      const [folder, ...rest] = key.split("/");
+      const filename = rest.join("/");
+      try {
+        const res = await fetch(
+          `/api/tracking?folder=${encodeURIComponent(folder)}&filename=${encodeURIComponent(filename)}`,
+          { method: "DELETE" },
+        );
+        if (res.ok) deleted++;
+      } catch (e) {
+        console.error("[OpenFiler] Batch tracking delete error:", e);
+      }
+    }
+    showToast(`Logs supprimés pour ${deleted} fichier(s)`, "success");
+    setSelectedTrackingFiles(new Set());
+    refreshTracking();
+  }
+
+  const sortedTrackingData = [...trackingData].sort((a, b) => {
+    let va: string | number = a[trackingSortField] as string | number;
+    let vb: string | number = b[trackingSortField] as string | number;
+    if (trackingSortField === "lastViewedAt") {
+      va = va ? new Date(va as string).getTime() : 0;
+      vb = vb ? new Date(vb as string).getTime() : 0;
+    }
+    if (typeof va === "string") {
+      va = va.toLowerCase();
+      vb = (vb as string).toLowerCase();
+    }
+    if (va < vb) return trackingSortDir === "asc" ? -1 : 1;
+    if (va > vb) return trackingSortDir === "asc" ? 1 : -1;
+    return 0;
+  });
 
   const storagePct = Math.min(
     (stats.totalSize / (1024 * 1024 * 1024)) * 100,
@@ -473,7 +702,116 @@ export function Dashboard({
 
       {/* MAIN */}
       <main className="flex flex-1 flex-col overflow-hidden">
-        {currentFolder === "trash" ? (
+        {currentFolder === "tracking" ? (
+          <>
+            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+              <div>
+                {trackingDetail ? (
+                  <>
+                    <h2 className="text-base font-semibold text-slate-900">
+                      Suivi — {trackingDetail.filename}
+                    </h2>
+                    <span className="text-sm text-slate-400">
+                      {trackingDetailData.length} accès récents
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-base font-semibold text-slate-900">
+                      Suivi des fichiers
+                    </h2>
+                    <span className="text-sm text-slate-400">
+                      {trackingData.length} fichier(s) avec des vues
+                    </span>
+                  </>
+                )}
+              </div>
+              <div className="flex gap-2">
+                {trackingDetail && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setTrackingDetail(null)}
+                  >
+                    Retour
+                  </Button>
+                )}
+                {trackingDetail ? (
+                  <Button
+                    variant="danger"
+                    onClick={() =>
+                      deleteTrackingLogs(
+                        trackingDetail.folder,
+                        trackingDetail.filename,
+                      )
+                    }
+                  >
+                    Supprimer les logs
+                  </Button>
+                ) : (
+                  trackingData.length > 0 && (
+                    <Button
+                      variant="danger"
+                      onClick={() => deleteTrackingLogs()}
+                    >
+                      Tout supprimer
+                    </Button>
+                  )
+                )}
+                <Button variant="outline" onClick={refreshTracking}>
+                  Actualiser
+                </Button>
+              </div>
+            </div>
+
+            {selectedTrackingFiles.size > 0 && !trackingDetail && (
+              <div className="flex items-center gap-3 bg-blue-500 px-6 py-2.5 text-sm text-white">
+                <span>
+                  <strong>{selectedTrackingFiles.size}</strong> fichier(s)
+                  sélectionné(s)
+                </span>
+                <Button variant="sm" onClick={batchDeleteTrackingLogs}>
+                  Supprimer les logs
+                </Button>
+                <Button
+                  variant="sm"
+                  onClick={() => setSelectedTrackingFiles(new Set())}
+                >
+                  Annuler
+                </Button>
+              </div>
+            )}
+
+            {trackingDetail ? (
+              <div className="flex-1 overflow-y-auto">
+                <TrackingDetailTable views={trackingDetailData} />
+              </div>
+            ) : sortedTrackingData.length > 0 ? (
+              <div className="flex-1 overflow-y-auto">
+                <TrackingTable
+                  files={sortedTrackingData}
+                  selectedFiles={selectedTrackingFiles}
+                  sortField={trackingSortField}
+                  sortDir={trackingSortDir}
+                  onSort={handleTrackingSort}
+                  onToggleSelectAll={toggleTrackingSelectAll}
+                  onToggleSelect={toggleTrackingSelect}
+                  onSelect={loadTrackingDetail}
+                />
+              </div>
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center px-5 py-20 text-center text-slate-400">
+                <div className="mb-4 text-5xl opacity-50">📊</div>
+                <h3 className="mb-2 text-base font-semibold text-slate-800">
+                  Aucune donnée de suivi
+                </h3>
+                <p className="text-sm">
+                  Les statistiques de consultation apparaîtront ici lorsque des
+                  fichiers seront consultés.
+                </p>
+              </div>
+            )}
+          </>
+        ) : currentFolder === "trash" ? (
           <>
             <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
               <div>
@@ -492,67 +830,37 @@ export function Dashboard({
               )}
             </div>
 
+            {selectedTrashItems.size > 0 && (
+              <div className="flex items-center gap-3 bg-blue-500 px-6 py-2.5 text-sm text-white">
+                <span>
+                  <strong>{selectedTrashItems.size}</strong> élément(s)
+                  sélectionné(s)
+                </span>
+                <Button variant="sm" onClick={batchRestoreTrash}>
+                  Restaurer
+                </Button>
+                <Button variant="sm" onClick={batchDeleteTrash}>
+                  Supprimer définitivement
+                </Button>
+                <Button
+                  variant="sm"
+                  onClick={() => setSelectedTrashItems(new Set())}
+                >
+                  Annuler
+                </Button>
+              </div>
+            )}
+
             {trashItems.length > 0 ? (
               <div className="flex-1 overflow-y-auto">
-                <table className="w-full border-collapse text-sm">
-                  <thead>
-                    <tr>
-                      <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
-                        Nom
-                      </th>
-                      <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
-                        Dossier d&apos;origine
-                      </th>
-                      <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
-                        Taille
-                      </th>
-                      <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
-                        Supprimé le
-                      </th>
-                      <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {trashItems.map((item) => (
-                      <tr
-                        key={item.id}
-                        className="border-b border-slate-100 transition-colors hover:bg-slate-50/70"
-                      >
-                        <td className="px-4 py-2.5 text-sm font-medium text-slate-800">
-                          {item.filename}
-                        </td>
-                        <td className="px-4 py-2.5 text-sm text-slate-500">
-                          {getFolderIcon(item.originalFolder)}{" "}
-                          {item.originalFolder}
-                        </td>
-                        <td className="px-4 py-2.5 text-xs text-slate-500">
-                          {formatSize(item.size)}
-                        </td>
-                        <td className="px-4 py-2.5 text-xs text-slate-500">
-                          {formatDate(item.deletedAt)}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex gap-1">
-                            <Button
-                              variant="outline"
-                              onClick={() => restoreFromTrash(item)}
-                            >
-                              Restaurer
-                            </Button>
-                            <Button
-                              variant="danger"
-                              onClick={() => deleteFromTrash(item)}
-                            >
-                              Supprimer
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <TrashTable
+                  items={trashItems}
+                  selectedItems={selectedTrashItems}
+                  onToggleSelectAll={toggleTrashSelectAll}
+                  onToggleSelect={toggleTrashSelect}
+                  onRestore={restoreFromTrash}
+                  onDelete={deleteFromTrash}
+                />
               </div>
             ) : (
               <div className="flex flex-1 flex-col items-center justify-center px-5 py-20 text-center text-slate-400">
@@ -617,6 +925,7 @@ export function Dashboard({
                   }
                   onDelete={deleteSingleFile}
                   onShare={setShareFile}
+                  onTracking={goToTracking}
                 />
               </div>
             ) : (

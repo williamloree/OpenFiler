@@ -51,6 +51,41 @@ export interface ShareLink {
   createdAt: string;
 }
 
+// ===== Tracking =====
+
+export type ViewAction = "preview" | "download" | "share_view";
+
+export interface FileViewRecord {
+  id: number;
+  folder: string;
+  filename: string;
+  action: ViewAction;
+  userId: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  referer: string | null;
+  viewedAt: string;
+}
+
+export interface FileTrackingSummary {
+  folder: string;
+  filename: string;
+  totalViews: number;
+  uniqueViewers: number;
+  previewCount: number;
+  downloadCount: number;
+  shareViewCount: number;
+  lastViewedAt: string | null;
+}
+
+export type TrackingSortField =
+  | "filename"
+  | "folder"
+  | "totalViews"
+  | "uniqueViewers"
+  | "downloadCount"
+  | "lastViewedAt";
+
 // ===== Component Props =====
 
 export interface ItemProps {
@@ -68,6 +103,7 @@ export interface ItemProps {
   onDownload: () => void;
   onDelete: () => void;
   onShare: () => void;
+  onTracking: () => void;
 }
 
 export interface TableProps {
@@ -89,6 +125,7 @@ export interface TableProps {
   onDownload: (file: FileInfo) => void;
   onDelete: (file: FileInfo) => void;
   onShare: (file: FileInfo) => void;
+  onTracking: (file: FileInfo) => void;
 }
 
 export interface ToolbarProps {
@@ -147,4 +184,28 @@ export interface SettingsModalProps {
   userName: string;
   userEmail: string;
   onClose: () => void;
+}
+
+export interface TrashTableProps {
+  items: TrashItem[];
+  selectedItems: Set<number>;
+  onToggleSelectAll: () => void;
+  onToggleSelect: (id: number) => void;
+  onRestore: (item: TrashItem) => void;
+  onDelete: (item: TrashItem) => void;
+}
+
+export interface TrackingTableProps {
+  files: FileTrackingSummary[];
+  selectedFiles: Set<string>;
+  sortField: TrackingSortField;
+  sortDir: SortDir;
+  onSort: (field: TrackingSortField) => void;
+  onToggleSelectAll: () => void;
+  onToggleSelect: (key: string) => void;
+  onSelect: (folder: string, filename: string) => void;
+}
+
+export interface TrackingDetailTableProps {
+  views: FileViewRecord[];
 }
