@@ -97,6 +97,24 @@ function ensureTables() {
     );
     CREATE INDEX IF NOT EXISTS "idx_file_view_file" ON "file_view" ("folder", "filename");
     CREATE INDEX IF NOT EXISTS "idx_file_view_date" ON "file_view" ("viewedAt");
+    CREATE TABLE IF NOT EXISTS "login_attempt" (
+      "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+      "ipAddress" TEXT NOT NULL,
+      "email" TEXT,
+      "userAgent" TEXT,
+      "success" INTEGER NOT NULL DEFAULT 0,
+      "attemptedAt" TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS "idx_login_attempt_ip" ON "login_attempt" ("ipAddress", "attemptedAt");
+    CREATE TABLE IF NOT EXISTS "banned_ip" (
+      "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+      "ipAddress" TEXT NOT NULL UNIQUE,
+      "reason" TEXT,
+      "bannedAt" TEXT NOT NULL,
+      "expiresAt" TEXT,
+      "permanent" INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS "idx_banned_ip_address" ON "banned_ip" ("ipAddress");
   `);
 }
 

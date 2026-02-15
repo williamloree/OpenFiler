@@ -1,191 +1,454 @@
 # OpenFiler
 
-Modern open-source file management platform built with Next.js.
+<div align="center">
 
-> **Complete rewrite** — This is a full refactor from the original Express.js codebase to a modern Next.js App Router architecture.
+**Plateforme moderne de gestion de fichiers open-source**
 
-## Tech Stack
+[![Next.js](https://img.shields.io/badge/Next.js-15-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-- **Framework:** [Next.js 15](https://nextjs.org/) (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS v4
-- **Authentication:** [Better Auth](https://www.better-auth.com/)
-- **Database:** SQLite (via better-sqlite3, swappable to PostgreSQL/MySQL)
-- **Storage:** Local filesystem (upload/image, upload/video, upload/document)
+[Fonctionnalités](#-fonctionnalités) • [Installation](#-installation) • [Documentation](#-documentation) • [Contribuer](#-contribuer)
 
-## Getting Started
+</div>
 
-### Prerequisites
+---
 
-- Node.js 18+
-- npm
+## 📖 À propos
 
-### Installation
+OpenFiler est une application web complète de gestion de fichiers construite avec les technologies les plus récentes. Elle offre un système de partage de fichiers sécurisé avec suivi analytique, corbeille, protection anti-brute force et bien plus.
+
+> **Rewrite complet** — Ce projet est une refonte complète de l'ancienne version Express.js vers une architecture moderne Next.js 15 App Router.
+
+### ✨ Fonctionnalités
+
+#### 📁 Gestion de fichiers
+- **Upload drag & drop** — Téléversez plusieurs fichiers simultanément avec barre de progression
+- **Prévisualisation** — Aperçu en ligne pour images, vidéos, PDFs et documents
+- **Organisation** — Classement automatique par type (images, vidéos, documents)
+- **Recherche** — Filtrage en temps réel par nom de fichier
+- **Renommage** — Modification des noms de fichiers en un clic
+- **Visibilité** — Marquez des fichiers comme privés ou publics
+- **Téléchargement** — Téléchargement individuel ou par lot (ZIP)
+
+#### 📊 Suivi analytique
+- **Statistiques détaillées** — Vues, téléchargements, visiteurs uniques par fichier
+- **Historique complet** — Journalisation de chaque accès avec IP, navigateur, source
+- **Vue d'ensemble** — Tableau de bord avec statistiques agrégées
+- **Vue détaillée** — Analyse approfondie fichier par fichier
+
+#### 🗑️ Corbeille
+- **Suppression sécurisée** — Les fichiers supprimés sont déplacés dans la corbeille
+- **Restauration** — Récupérez facilement des fichiers supprimés par erreur
+- **Suppression définitive** — Suppression permanente individuelle ou par lot
+- **Métadonnées** — Conservation de l'auteur et de la date de suppression
+
+#### 🔗 Partage
+- **Liens partagés** — Générez des liens publics avec expiration automatique
+- **Durée personnalisable** — 1h, 24h, 7j ou 30 jours
+- **Accès anonyme** — Les liens partagés ne nécessitent pas d'authentification
+- **Suivi** — Les accès via liens partagés sont tracés dans les analytics
+
+#### 🛡️ Sécurité
+- **Système fail2ban** — Protection automatique contre les attaques par force brute
+- **Bannissement IP** — Bannissement automatique après 5 tentatives échouées
+- **Gestion des bans** — Interface d'administration pour bannir/débannir manuellement
+- **Historique des tentatives** — Journal complet des tentatives de connexion
+- **Bans temporaires/permanents** — Configuration flexible des durées de bannissement
+
+#### 🎨 Interface utilisateur
+- **Design moderne** — Interface épurée avec Tailwind CSS v4
+- **Mode responsive** — Optimisé pour desktop, tablette et mobile
+- **Actions par lot** — Sélection multiple avec barre d'actions groupées
+- **Notifications toast** — Retours visuels pour toutes les actions
+- **Tri des colonnes** — Triez par nom, type, taille, date ou statistiques
+
+---
+
+## 🚀 Installation
+
+### Prérequis
+
+- **Node.js** 18+ et npm
+- **Git** pour cloner le dépôt
+
+### Installation rapide
 
 ```bash
+# Cloner le dépôt
 git clone https://github.com/williamloree/OpenFiler.git
 cd OpenFiler
+
+# Installer les dépendances
 npm install
-```
 
-### Configuration
-
-Copy the example environment file and update it with your values:
-
-```bash
+# Configurer l'environnement
 cp .env.example .env
-```
 
-**Required environment variables:**
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `BETTER_AUTH_SECRET` | Secret key for session signing (generate a random string) | — |
-| `BETTER_AUTH_URL` | Base URL of the app | `http://localhost:3000` |
-| `DATABASE_URL` | Path to SQLite database file | `./openfiler.db` |
-| `NEXT_PUBLIC_APP_URL` | Public app URL (used by auth client) | `http://localhost:3000` |
-
-Generate a secure secret:
-
-```bash
+# Générer une clé secrète
 openssl rand -base64 32
-```
 
-### Database Setup
+# Éditer .env et coller la clé dans BETTER_AUTH_SECRET
+nano .env
 
-Run the Better Auth migration to create the required tables (user, session, account, verification):
-
-```bash
+# Créer les tables de la base de données
 npx @better-auth/cli@latest migrate --config lib/auth/server.ts
+
+# Lancer en développement
+npm run dev
 ```
 
-### Development
+Ouvrez [http://localhost:3000](http://localhost:3000) et connectez-vous avec :
+- **Email:** `admin@openfiler.local`
+- **Mot de passe:** `admin1234`
+
+⚠️ **Important :** Changez le mot de passe par défaut en production !
+
+---
+
+## 📦 Déploiement
+
+### Développement local
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### First Use
-
-A default admin account is created automatically on first launch:
-
-| Email | Password |
-|-------|----------|
-| `admin@openfiler.local` | `admin1234` |
-
-1. Open [http://localhost:3000](http://localhost:3000) — you will be redirected to the login page
-2. Sign in with the default credentials above
-3. Upload, preview, download, and manage your files
-
-> If you delete the database (`openfiler.db`), run the migration again and restart — the default user will be recreated automatically.
-
-### Build for Production
+### Production (Node.js)
 
 ```bash
 npm run build
 npm start
 ```
 
-## Project Structure
+### Production (Docker)
+
+```bash
+# Build et démarrage
+docker-compose up -d
+
+# Logs
+docker-compose logs -f
+
+# Arrêt
+docker-compose down
+```
+
+Le conteneur expose le port 3000 par défaut.
+
+---
+
+## 🔧 Configuration
+
+### Variables d'environnement
+
+Créez un fichier `.env` à la racine :
+
+```env
+# Authentication
+BETTER_AUTH_SECRET=your-secret-key-here-use-openssl-rand-base64-32
+BETTER_AUTH_URL=http://localhost:3000
+BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:3000
+
+# Database
+DATABASE_URL=./openfiler.db
+
+# App
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+| Variable | Description | Requis |
+|----------|-------------|--------|
+| `BETTER_AUTH_SECRET` | Clé secrète pour signer les sessions (générez avec `openssl rand -base64 32`) | ✅ |
+| `BETTER_AUTH_URL` | URL de base de l'application | ✅ |
+| `DATABASE_URL` | Chemin vers le fichier SQLite (ou URL PostgreSQL/MySQL) | ✅ |
+| `NEXT_PUBLIC_APP_URL` | URL publique de l'app (utilisée par le client auth) | ✅ |
+
+### Base de données
+
+Par défaut, OpenFiler utilise SQLite avec `better-sqlite3`. Les tables sont créées automatiquement au démarrage via `instrumentation.ts` et `lib/seed.ts`.
+
+**Tables créées :**
+- `user`, `session`, `account`, `verification` (Better Auth)
+- `file_metadata` (métadonnées de fichiers)
+- `trash` (corbeille)
+- `api_token` (tokens API)
+- `share_link` (liens de partage)
+- `file_view` (suivi analytique)
+- `login_attempt` (tentatives de connexion)
+- `banned_ip` (IPs bannies)
+
+**Migration vers PostgreSQL/MySQL :**
+
+1. Modifiez `DATABASE_URL` dans `.env` :
+   ```env
+   DATABASE_URL=postgresql://user:password@localhost:5432/openfiler
+   ```
+
+2. Mettez à jour `lib/auth/server.ts` pour utiliser le bon adaptateur Better Auth
+
+3. Remplacez `better-sqlite3` par `pg` ou `mysql2` dans `lib/seed.ts`
+
+### Stockage des fichiers
+
+Les fichiers sont stockés dans `upload/` par défaut :
+- `upload/image/` — Images (JPEG, PNG, SVG, WebP, BMP, ICO)
+- `upload/video/` — Vidéos (MP4, AVI, MOV, WMV, FLV, WebM, MKV)
+- `upload/document/` — Documents (PDF, DOCX)
+- `upload/trash/` — Fichiers supprimés
+
+**Limites par défaut :**
+- **Taille max par fichier :** 64 MB
+- **Fichiers par upload :** 6 images, 2 vidéos, 3 documents
+
+Modifiez ces limites dans `lib/upload-config.ts`.
+
+---
+
+## 📚 Documentation
+
+### Architecture
 
 ```
-/
+OpenFiler/
 ├── app/
-│   ├── layout.tsx                    # Root layout
-│   ├── page.tsx                      # File browser (protected, redirects to /login)
-│   ├── login/
-│   │   ├── page.tsx                  # Login page (redirects to / if authenticated)
-│   │   └── login-form.tsx            # Login form (client component)
-│   ├── dashboard/
-│   │   └── file-browser.tsx          # File browser UI (client component)
-│   └── api/
-│       ├── auth/[...all]/            # Better Auth catch-all
-│       ├── upload/                   # POST  - file upload
-│       ├── files/                    # GET/DELETE - list/delete files
-│       │   ├── [folder]/[name]/      # GET   - file info
-│       │   └── visibility/           # PATCH - toggle private/public
-│       ├── preview/[folder]/[name]/  # GET   - serve/preview file
-│       ├── download/[folder]/[name]/ # GET   - download file
-│       ├── stats/                    # GET   - storage statistics
-│       ├── health/                   # GET   - health check
-│       └── config/allowed-types/     # GET   - allowed MIME types
+│   ├── layout.tsx              # Layout principal
+│   ├── page.tsx                # Redirection vers /dashboard ou /login
+│   ├── login/                  # Page de connexion
+│   ├── dashboard.tsx           # Application principale (client component)
+│   ├── share/[token]/          # Route de partage public
+│   └── api/                    # Routes API
+│       ├── auth/[...all]/      # Better Auth (sign-in, sign-out)
+│       ├── upload/             # Upload de fichiers
+│       ├── files/              # CRUD fichiers
+│       ├── preview/            # Prévisualisation
+│       ├── download/           # Téléchargement
+│       ├── stats/              # Statistiques de stockage
+│       ├── trash/              # Gestion de la corbeille
+│       ├── share/              # Gestion des liens de partage
+│       ├── tracking/           # Données analytiques
+│       ├── security/           # Fail2ban management
+│       └── config/             # Configuration
+├── components/
+│   ├── Sidebar.tsx             # Navigation latérale
+│   ├── Toolbar.tsx             # Barre d'outils et recherche
+│   ├── BatchBar.tsx            # Actions groupées
+│   ├── Modals.tsx              # Modals (upload, settings, preview)
+│   ├── Toasts.tsx              # Système de notifications
+│   └── table/
+│       ├── Table.tsx           # Tableau de fichiers
+│       ├── TrashTable.tsx      # Tableau de corbeille
+│       ├── TrackingTable.tsx   # Tableau de suivi
+│       └── SecurityTables.tsx  # Tableaux de sécurité
 ├── lib/
 │   ├── auth/
-│   │   ├── server.ts                 # Better Auth server instance
-│   │   ├── client.ts                 # Better Auth client helpers
-│   │   └── require-session.ts        # Session guard for API routes
-│   ├── seed.ts                       # Default user seeding
-│   ├── metadata.ts                   # File privacy metadata (JSON store)
-│   ├── mime.ts                       # MIME type lookup
-│   ├── slug.ts                       # Filename slugification
-│   ├── upload-config.ts              # Allowed types, size limits
-│   └── ensure-dirs.ts                # Upload directory bootstrap
-├── middleware.ts                      # Blocks /signup, route protection
-├── instrumentation.ts                # Seeds default user on startup
-├── .env.example                      # Environment variables template
-├── next.config.js                    # Next.js configuration
-├── postcss.config.mjs                # PostCSS / Tailwind config
-└── tsconfig.json                     # TypeScript configuration
+│   │   ├── server.ts           # Instance Better Auth
+│   │   ├── client.ts           # Helpers client
+│   │   └── require-session.ts  # Middleware de session
+│   ├── seed.ts                 # Initialisation DB + user par défaut
+│   ├── metadata.ts             # Gestion des métadonnées (JSON)
+│   ├── trash.ts                # Logique de la corbeille
+│   ├── share.ts                # Logique des liens partagés
+│   ├── tracking.ts             # Logique de suivi analytique
+│   ├── security.ts             # Système fail2ban
+│   ├── mime.ts                 # Détection de types MIME
+│   ├── slug.ts                 # Slugification des noms de fichiers
+│   ├── upload-config.ts        # Configuration d'upload
+│   └── ensure-dirs.ts          # Création des dossiers d'upload
+├── types/
+│   └── index.ts                # Types TypeScript partagés
+├── middleware.ts               # Middleware Next.js (blocage /signup)
+├── instrumentation.ts          # Hook de démarrage (seed user)
+└── public/                     # Assets statiques
 ```
 
-## API Routes
+### API Routes
 
+#### Authentification
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
-| POST | `/api/upload` | - | Upload files (image x6, video x2, document x3, 64MB max) |
-| GET | `/api/files` | - | List all files (optional `?folder=image\|video\|document`) |
-| DELETE | `/api/files` | - | Delete a file by name + type |
-| GET | `/api/files/:folder/:name` | - | Get file info |
-| PATCH | `/api/files/visibility` | Session | Toggle file private/public |
-| GET | `/api/preview/:folder/:name` | Session* | Serve file for preview (* only if private) |
-| GET | `/api/download/:folder/:name` | Session* | Download file (* only if private) |
-| GET | `/api/stats` | - | Storage stats (total files, sizes per folder) |
-| GET | `/api/health` | - | Health check |
-| GET | `/api/config/allowed-types` | - | Allowed MIME types and limits |
+| POST | `/api/auth/sign-in/email` | Public | Connexion par email/password |
+| POST | `/api/auth/sign-out` | Session | Déconnexion |
 
-## File Browser Features
+#### Fichiers
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| POST | `/api/upload` | Session | Upload de fichiers |
+| GET | `/api/files` | Session | Liste des fichiers (optionnel `?folder=`) |
+| DELETE | `/api/files` | Session | Suppression (déplace vers corbeille) |
+| GET | `/api/files/[folder]/[name]` | Session | Informations d'un fichier |
+| PATCH | `/api/files/visibility` | Session | Basculer privé/public |
+| PATCH | `/api/files/rename` | Session | Renommer un fichier |
+| GET | `/api/preview/[folder]/[name]` | Session* | Prévisualiser (* si privé) |
+| GET | `/api/download/[folder]/[name]` | Session* | Télécharger (* si privé) |
+| POST | `/api/download/batch` | Session | Télécharger plusieurs fichiers (ZIP) |
 
-- **Sidebar navigation** — filter by All / Images / Videos / Documents with live file counts
-- **Storage stats** — total files, total size, visual progress bar
-- **File table** — sortable by name, type, size, date
-- **Search** — real-time filename filtering
-- **Batch operations** — select multiple files, batch delete
-- **Upload** — drag & drop or click to select, with progress indicator
-- **Preview** — inline preview for images, videos, PDFs; detail view for other types
-- **Visibility toggle** — mark files as private (requires session to access)
-- **Responsive** — sidebar collapses on mobile
+#### Corbeille
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/api/trash` | Session | Liste des fichiers en corbeille |
+| POST | `/api/trash/restore` | Session | Restaurer un fichier |
+| DELETE | `/api/trash` | Session | Suppression définitive |
 
-## Authentication
+#### Partage
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| POST | `/api/share` | Session | Créer un lien de partage |
+| GET | `/api/share` | Session | Liste des liens actifs |
+| DELETE | `/api/share` | Session | Supprimer un lien |
+| GET | `/share/[token]` | Public | Accéder à un fichier partagé |
 
-OpenFiler uses [Better Auth](https://www.better-auth.com/) for authentication:
+#### Analytics
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/api/tracking` | Session | Statistiques globales |
+| GET | `/api/tracking?folder=X&filename=Y` | Session | Détails d'un fichier |
+| DELETE | `/api/tracking` | Session | Supprimer des logs de suivi |
 
-- Default admin account created automatically on first launch
-- Email/password sign-in (sign-up is disabled by default)
-- Session management (7-day expiry, daily refresh)
-- Server-side session validation for protected routes
-- Authenticated users are redirected from `/login` to `/` automatically
+#### Sécurité
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/api/security?type=bans` | Session | Liste des IPs bannies |
+| GET | `/api/security?type=attempts` | Session | Liste des tentatives de connexion |
+| POST | `/api/security` | Session | Bannir une IP manuellement |
+| DELETE | `/api/security?ip=X` | Session | Débannir une IP |
 
-## Supported File Types
+#### Divers
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/api/stats` | Session | Statistiques de stockage |
+| GET | `/api/health` | Public | Health check |
+| GET | `/api/config/allowed-types` | Public | Types MIME autorisés |
 
-| Category | Types | Max per upload |
-|----------|-------|----------------|
-| Image | JPEG, PNG, SVG, WebP, BMP, ICO | 6 |
-| Video | MP4, AVI, MOV, WMV, FLV, WebM, MKV | 2 |
-| Document | PDF, DOCX | 3 |
+---
 
-Max file size: **64 MB**
+## 🤝 Contribuer
 
-## Philosophy
+Les contributions sont les bienvenues ! Suivez ces étapes pour contribuer au projet.
 
-OpenFiler aims to be a clean, extensible file management platform:
+### Workflow de contribution
 
-- **Simple by default** — works out of the box with SQLite and local storage
-- **Production-ready architecture** — swap to PostgreSQL, add S3 storage, deploy to any cloud
-- **Open-source first** — clean code, clear documentation, ready for contributions
+1. **Fork** le dépôt
+2. **Clone** votre fork :
+   ```bash
+   git clone https://github.com/votre-username/OpenFiler.git
+   cd OpenFiler
+   ```
+3. **Créez une branche** pour votre feature :
+   ```bash
+   git checkout -b feat/ma-nouvelle-feature
+   ```
+4. **Installez les dépendances** :
+   ```bash
+   npm install
+   ```
+5. **Développez** votre fonctionnalité
+6. **Testez** vos modifications
+7. **Committez** avec des messages conventionnels (voir ci-dessous)
+8. **Poussez** vers votre fork :
+   ```bash
+   git push origin feat/ma-nouvelle-feature
+   ```
+9. **Ouvrez une Pull Request** vers la branche `develop`
 
+### Conventional Commits
 
-## Licence
+Ce projet utilise la spécification [Conventional Commits](https://www.conventionalcommits.org/). Chaque commit doit suivre ce format :
 
-MIT License - voir [LICENSE](LICENSE)
+```
+<type>[scope optionnel]: <description>
+
+[corps optionnel]
+
+[footer optionnel]
+```
+
+**Types de commits :**
+
+| Type | Utilisation |
+|------|-------------|
+| `feat` | Nouvelle fonctionnalité |
+| `fix` | Correction de bug |
+| `docs` | Documentation uniquement |
+| `style` | Formatage (pas de changement de logique) |
+| `refactor` | Refactoring de code |
+| `perf` | Amélioration de performance |
+| `test` | Ajout/modification de tests |
+| `build` | Build system ou dépendances |
+| `ci` | Configuration CI/CD |
+| `chore` | Maintenance, tâches diverses |
+
+**Exemples :**
+
+```bash
+feat(tracking): add batch delete for tracking logs
+fix(security): prevent SQL injection in ban IP endpoint
+docs(readme): update installation instructions
+refactor(upload): simplify file validation logic
+```
+
+### Guidelines de code
+
+- **TypeScript strict** — Utilisez les types partout, évitez `any`
+- **Composants fonctionnels** — Utilisez React hooks, pas de classes
+- **Server/Client séparé** — Marquez les composants clients avec `"use client"`
+- **API synchrone** — Utilisez `better-sqlite3` de manière synchrone (pas de promesses)
+- **Gestion d'erreurs** — Loggez les erreurs, retournez des messages clairs
+- **Sécurité** — Validez toutes les entrées, sanitizez les données, évitez les injections
+
+### Structure des issues
+
+Utilisez les labels appropriés :
+- `bug` — Dysfonctionnement à corriger
+- `enhancement` — Amélioration d'une fonctionnalité existante
+- `feature` — Nouvelle fonctionnalité
+- `documentation` — Amélioration de la documentation
+- `question` — Question ou discussion
+
+### Pull Requests
+
+- **Ciblez `develop`** — Toutes les PRs doivent cibler la branche `develop`, pas `main`
+- **Description claire** — Expliquez ce que fait votre PR et pourquoi
+- **Tests** — Assurez-vous que tout fonctionne en local
+- **Pas de breaking changes** — Sauf si absolument nécessaire et documenté
+- **Un sujet par PR** — Ne mélangez pas plusieurs fonctionnalités non liées
+
+---
+
+## 🛠️ Stack technique
+
+| Catégorie | Technologie |
+|-----------|-------------|
+| **Framework** | [Next.js 15](https://nextjs.org/) (App Router) |
+| **Language** | [TypeScript 5.7](https://www.typescriptlang.org/) |
+| **UI** | [React 19](https://react.dev/) |
+| **Styling** | [Tailwind CSS v4](https://tailwindcss.com/) |
+| **Auth** | [Better Auth 1.2](https://www.better-auth.com/) |
+| **Database** | SQLite ([better-sqlite3](https://github.com/WiseLibs/better-sqlite3)) |
+| **File handling** | Node.js `fs`, [archiver](https://www.npmjs.com/package/archiver) |
+| **Linting** | ESLint 9 |
+
+---
+
+## 📝 Licence
+
+Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+
+---
+
+## 🙏 Remerciements
+
+- [Better Auth](https://www.better-auth.com/) pour le système d'authentification simple et sécurisé
+- [Next.js](https://nextjs.org/) pour le framework React full-stack
+- [Tailwind CSS](https://tailwindcss.com/) pour le système de design utility-first
+- Tous les contributeurs qui rendent ce projet possible
+
+---
+
+<div align="center">
+
+**Fait avec ❤️ par la communauté**
+
+[⭐ Star ce projet](https://github.com/williamloree/OpenFiler) • [🐛 Reporter un bug](https://github.com/williamloree/OpenFiler/issues) • [💡 Suggérer une feature](https://github.com/williamloree/OpenFiler/issues/new)
+
+</div>

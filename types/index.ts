@@ -209,3 +209,22 @@ export interface TrackingTableProps {
 export interface TrackingDetailTableProps {
   views: FileViewRecord[];
 }
+
+// Security types
+export interface LoginAttempt {
+  id: number;
+  ipAddress: string;
+  email: string | null;
+  userAgent: string | null;
+  success: number;
+  attemptedAt: string;
+}
+
+export interface BannedIp {
+  id: number;
+  ipAddress: string;
+  reason: string | null;
+  bannedAt: string;
+  expiresAt: string | null;
+  permanent: number;
+}

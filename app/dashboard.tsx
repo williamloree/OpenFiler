@@ -11,6 +11,8 @@ import type {
   FileTrackingSummary,
   FileViewRecord,
   TrackingSortField,
+  BannedIp,
+  LoginAttempt,
 } from "@/types";
 import { Table } from "@/components/table/Table";
 import { Sidebar } from "../components/Sidebar";
@@ -107,6 +109,10 @@ export function Dashboard({
     Set<string>
   >(new Set());
 
+  const [bannedIps, setBannedIps] = useState<BannedIp[]>([]);
+  const [loginAttempts, setLoginAttempts] = useState<LoginAttempt[]>([]);
+  const [securityView, setSecurityView] = useState<"bans" | "attempts">("bans");
+
   const PAGE_LIMIT = 50;
   const toastIdRef = useRef(0);
 
@@ -156,6 +162,21 @@ export function Dashboard({
     [showToast],
   );
 
+  const refreshSecurity = useCallback(async () => {
+    try {
+      const type = securityView === "attempts" ? "attempts" : "bans";
+      const res = await fetch(`/api/security?type=${type}`);
+      const data = await res.json();
+      if (securityView === "attempts") {
+        setLoginAttempts(data.attempts || []);
+      } else {
+        setBannedIps(data.bannedIps || []);
+      }
+    } catch {
+      showToast("Erreur de chargement des données de sécurité", "error");
+    }
+  }, [securityView, showToast]);
+
   const refreshFiles = useCallback(
     async (p?: number) => {
       try {
@@ -180,6 +201,12 @@ export function Dashboard({
   useEffect(() => {
     refreshFiles();
   }, [refreshFiles]);
+
+  useEffect(() => {
+    if (currentFolder === "security") {
+      refreshSecurity();
+    }
+  }, [currentFolder, securityView, refreshSecurity]);
 
   // Filter & sort
   let displayedFiles = allFiles;
@@ -229,6 +256,9 @@ export function Dashboard({
     setTrackingDetail(null);
     if (folder === "tracking") {
       refreshTracking();
+    }
+    if (folder === "security") {
+      refreshSecurity();
     }
   }
 
@@ -610,6 +640,24 @@ export function Dashboard({
     loadTrackingDetail(file.folder, file.name);
   }
 
+  async function unbanIp(ipAddress: string) {
+    if (!confirm(`Débannir l'IP ${ipAddress} ?`)) return;
+    try {
+      const res = await fetch(`/api/security?ip=${encodeURIComponent(ipAddress)}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        showToast(`IP ${ipAddress} débannie`, "success");
+        refreshSecurity();
+      } else {
+        const data = await res.json();
+        showToast(data.message, "error");
+      }
+    } catch {
+      showToast("Erreur de connexion", "error");
+    }
+  }
+
   function handleTrackingSort(field: TrackingSortField) {
     if (trackingSortField === field) {
       setTrackingSortDir(trackingSortDir === "asc" ? "desc" : "asc");
@@ -807,6 +855,179 @@ export function Dashboard({
                 <p className="text-sm">
                   Les statistiques de consultation apparaîtront ici lorsque des
                   fichiers seront consultés.
+                </p>
+              </div>
+            )}
+          </>
+        ) : currentFolder === "security" ? (
+          <>
+            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Sécurité
+                </h2>
+                <span className="text-sm text-slate-400">
+                  {securityView === "bans"
+                    ? `${bannedIps.length} IP(s) bannie(s)`
+                    : `${loginAttempts.length} tentative(s) récente(s)`}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant={securityView === "bans" ? "primary" : "outline"}
+                  onClick={() => setSecurityView("bans")}
+                >
+                  IPs bannies
+                </Button>
+                <Button
+                  variant={securityView === "attempts" ? "primary" : "outline"}
+                  onClick={() => setSecurityView("attempts")}
+                >
+                  Tentatives
+                </Button>
+                <Button variant="outline" onClick={refreshSecurity}>
+                  Actualiser
+                </Button>
+              </div>
+            </div>
+
+            {securityView === "bans" ? (
+              bannedIps.length > 0 ? (
+                <div className="flex-1 overflow-y-auto">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr>
+                        <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
+                          Adresse IP
+                        </th>
+                        <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
+                          Raison
+                        </th>
+                        <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
+                          Banni le
+                        </th>
+                        <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
+                          Expire le
+                        </th>
+                        <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bannedIps.map((ban) => (
+                        <tr
+                          key={ban.id}
+                          className="border-b border-slate-100 transition-colors hover:bg-slate-50/70"
+                        >
+                          <td className="px-4 py-2.5 text-sm font-medium text-slate-800">
+                            {ban.ipAddress}
+                          </td>
+                          <td className="px-4 py-2.5 text-xs text-slate-500">
+                            {ban.reason || "-"}
+                          </td>
+                          <td className="px-4 py-2.5 text-xs text-slate-500">
+                            {formatDate(ban.bannedAt)}
+                          </td>
+                          <td className="px-4 py-2.5 text-xs text-slate-500">
+                            {ban.permanent ? (
+                              <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-600">
+                                Permanent
+                              </span>
+                            ) : ban.expiresAt ? (
+                              formatDate(ban.expiresAt)
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <Button
+                              variant="outline"
+                              onClick={() => unbanIp(ban.ipAddress)}
+                            >
+                              Débannir
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center px-5 py-20 text-center text-slate-400">
+                  <div className="mb-4 text-5xl opacity-50">🛡️</div>
+                  <h3 className="mb-2 text-base font-semibold text-slate-800">
+                    Aucune IP bannie
+                  </h3>
+                  <p className="text-sm">
+                    Les adresses IP bannies apparaîtront ici.
+                  </p>
+                </div>
+              )
+            ) : loginAttempts.length > 0 ? (
+              <div className="flex-1 overflow-y-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr>
+                      <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
+                        Adresse IP
+                      </th>
+                      <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
+                        Email
+                      </th>
+                      <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
+                        User-Agent
+                      </th>
+                      <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
+                        Statut
+                      </th>
+                      <th className="sticky top-0 z-5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-400">
+                        Date
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loginAttempts.map((attempt) => (
+                      <tr
+                        key={attempt.id}
+                        className="border-b border-slate-100 transition-colors hover:bg-slate-50/70"
+                      >
+                        <td className="px-4 py-2.5 text-sm font-medium text-slate-800">
+                          {attempt.ipAddress}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-slate-500">
+                          {attempt.email || "-"}
+                        </td>
+                        <td className="max-w-50 truncate px-4 py-2.5 text-xs text-slate-500">
+                          {attempt.userAgent || "-"}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {attempt.success ? (
+                            <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-600">
+                              Succès
+                            </span>
+                          ) : (
+                            <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-600">
+                              Échec
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-slate-500">
+                          {formatDate(attempt.attemptedAt)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center px-5 py-20 text-center text-slate-400">
+                <div className="mb-4 text-5xl opacity-50">📋</div>
+                <h3 className="mb-2 text-base font-semibold text-slate-800">
+                  Aucune tentative enregistrée
+                </h3>
+                <p className="text-sm">
+                  Les tentatives de connexion apparaîtront ici.
                 </p>
               </div>
             )}
