@@ -86,6 +86,21 @@ export function Sidebar({
           <span className="w-5 text-center text-base">📊</span>
           <span className="nav-text">Suivi</span>
         </div>
+
+        <div className="mt-4 px-5 pb-1.5 pt-2 text-[10px] font-semibold tracking-widest text-slate-600 uppercase">
+          Sécurité
+        </div>
+        <div
+          className={`flex cursor-pointer items-center gap-3 border-l-3 px-5 py-2.5 text-sm transition-all ${
+            currentFolder === "security"
+              ? "border-blue-400 bg-[#243348] text-white"
+              : "border-transparent hover:bg-[#1a2538]"
+          }`}
+          onClick={() => selectFolder("security")}
+        >
+          <span className="w-5 text-center text-base">🛡️</span>
+          <span className="nav-text">Protection</span>
+        </div>
       </nav>
 
       {/* Stats */}
