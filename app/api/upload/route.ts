@@ -27,8 +27,13 @@ export async function POST(request: NextRequest) {
 
     if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.slice(7);
-      const row = db.prepare("SELECT id FROM api_token WHERE token = ?").get(token);
-      authenticated = !!row;
+      const envToken = process.env.OPENFILER_API_TOKEN;
+      if (envToken && token === envToken) {
+        authenticated = true;
+      } else {
+        const row = db.prepare("SELECT id FROM api_token WHERE token = ?").get(token);
+        authenticated = !!row;
+      }
     }
 
     if (!authenticated) {
