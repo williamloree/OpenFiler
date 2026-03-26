@@ -155,6 +155,9 @@ DATABASE_URL=./openfiler.db
 
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Token API de référence (optionnel)
+# OPENFILER_API_TOKEN=
 ```
 
 | Variable | Description | Requis |
@@ -163,6 +166,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 | `BETTER_AUTH_URL` | URL de base de l'application | ✅ |
 | `DATABASE_URL` | Chemin vers le fichier SQLite (ou URL PostgreSQL/MySQL) | ✅ |
 | `NEXT_PUBLIC_APP_URL` | URL publique de l'app (utilisée par le client auth) | ✅ |
+| `OPENFILER_API_TOKEN` | Token API de référence défini dans l'environnement. Accepté pour les uploads sans passer par l'interface — invisible et non-supprimable dans l'app. | ❌ |
 
 ### Base de données
 
